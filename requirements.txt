@@ -1,0 +1,82 @@
+# FastAPI and Server
+fastapi
+uvicorn[standard]
+python-multipart
+websockets
+
+# Core LangChain and LangGraph (relaxed)
+langchain
+langchain-core
+langchain-community
+langgraph
+
+# LangChain LLM Providers (relaxed)
+langchain-openai
+langchain-anthropic
+langchain-google-genai
+langchain-groq
+
+# CrewAI
+crewai
+crewai-tools
+
+# Database
+supabase
+
+# Validation & Config
+pydantic
+pydantic-settings
+python-dotenv
+
+# Image Processing (for UI/UX Agent)
+pillow
+opencv-python
+numpy
+colorthief
+webcolors
+
+# Code Analysis and Profiling Tools (NEW)
+ast-comments
+radon
+pylint
+flake8
+mypy
+bandit
+vulture
+memory-profiler
+line-profiler
+py-spy
+
+# HTTP & Utilities
+httpx
+requests
+aiohttp
+aiofiles
+rich
+typer
+loguru
+colorama
+tenacity
+python-json-logger
+
+# Code Formatting
+black
+autopep8
+isort
+
+# PDF Processing
+PyMuPDF
+pdfplumber
+pypdf
+
+# Math / LaTeX
+sympy
+latex2sympy2
+
+# Data Processing
+pandas
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
