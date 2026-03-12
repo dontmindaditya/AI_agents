@@ -47,7 +47,7 @@ class PipelineOrchestrator:
             # Execute stages
             await self._execute_stage(project_id, "planning", context)
             await self._execute_stage(project_id, "analysis", context)
-            await self._execute_stage(project_id, "analysis", context)
+            await self._execute_stage(project_id, "design", context)
             await self._execute_stage(project_id, "generation", context)
             await self._execute_stage(project_id, "integration", context)
             
