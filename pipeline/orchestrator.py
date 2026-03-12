@@ -121,20 +121,17 @@ class PipelineOrchestrator:
         context: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Execute single agent"""
-        # from agents import PlannerAgent, FrontendAgent, BackendAgent
+        from agents.registry import agent_registry
         
-        agents = {
-            # "planner": PlannerAgent,
-            # "frontend": FrontendAgent,
-            # "backend": BackendAgent
-        }
-        
-        agent_class = agents.get(agent_type)
+        agent_class = agent_registry.get_agent_class(agent_type)
         if not agent_class:
             raise ValueError(f"Unknown agent: {agent_type}")
         
-        agent = agent_class(project_id, self.ws_manager)
-        return await agent.execute_task(task_description, context)
+        agent = agent_class()
+        return await agent.run(
+            inputs={"task": task_description, **context},
+            context=context
+        )
     
     async def get_pipeline_status(self, project_id: str) -> Dict[str, Any]:
         """Get pipeline status"""
