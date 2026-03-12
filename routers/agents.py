@@ -1,10 +1,11 @@
 """
 API endpoint to list and run all available agents
 """
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from agents.registry import agent_registry
+from utils.auth import get_current_user, require_role
 
 router = APIRouter()
 
@@ -13,7 +14,9 @@ class AgentRunRequest(BaseModel):
     context: Optional[Dict[str, Any]] = None
 
 @router.get("/agents/list", response_model=List[Dict[str, Any]])
-async def list_available_agents():
+async def list_available_agents(
+    user: dict = Depends(get_current_user)
+):
     """
     Get all available agents from the registry
     This auto-discovers agents from the agents directory
@@ -21,7 +24,10 @@ async def list_available_agents():
     return agent_registry.get_all_agents()
 
 @router.get("/agents/{agent_id}")
-async def get_agent_details(agent_id: str):
+async def get_agent_details(
+    agent_id: str,
+    user: dict = Depends(get_current_user)
+):
     """Get details for a specific agent"""
     agent = agent_registry.get_agent_metadata(agent_id)
     if not agent:
@@ -29,7 +35,11 @@ async def get_agent_details(agent_id: str):
     return agent
 
 @router.post("/agents/{agent_id}/run")
-async def run_agent(agent_id: str, request: AgentRunRequest):
+async def run_agent(
+    agent_id: str, 
+    request: AgentRunRequest,
+    user: dict = Depends(get_current_user)
+):
     """Execute a specific agent"""
     agent_class = agent_registry.get_agent_class(agent_id)
     if not agent_class:
@@ -53,7 +63,10 @@ async def run_agent(agent_id: str, request: AgentRunRequest):
 from pipeline.dynamic import DynamicPipeline, PipelineConfig
 
 @router.post("/pipelines/run")
-async def run_pipeline(config: PipelineConfig):
+async def run_pipeline(
+    config: PipelineConfig,
+    user: dict = Depends(get_current_user)
+):
     """
     Execute a dynamic pipeline of agents.
     """

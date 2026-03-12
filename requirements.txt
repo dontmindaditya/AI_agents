@@ -58,6 +58,7 @@ loguru
 colorama
 tenacity
 python-json-logger
+python-jose[cryptography]
 
 # Code Formatting
 black

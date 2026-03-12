@@ -6,7 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from config import settings
 from utils.logger import setup_logger
+from utils.auth import get_current_user
 from pipeline.orchestrator import PipelineOrchestrator
 from services.websocket_manager import WebSocketManager
 from routers import marketplace, agent_management, agents
@@ -120,7 +121,11 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
 
 
 @app.post("/api/pipeline/execute")
-async def execute_pipeline(request: PipelineExecuteRequest, background_tasks: BackgroundTasks):
+async def execute_pipeline(
+    request: PipelineExecuteRequest, 
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user)
+):
     try:
         logger.info(f"🎯 Starting pipeline: {request.project_id}")
         
@@ -148,7 +153,10 @@ async def execute_pipeline(request: PipelineExecuteRequest, background_tasks: Ba
 
 
 @app.get("/api/pipeline/status/{project_id}")
-async def get_pipeline_status(project_id: str):
+async def get_pipeline_status(
+    project_id: str,
+    user: dict = Depends(get_current_user)
+):
     try:
         status = await orchestrator.get_pipeline_status(project_id)
         return status
@@ -157,7 +165,10 @@ async def get_pipeline_status(project_id: str):
 
 
 @app.post("/api/pipeline/cancel/{project_id}")
-async def cancel_pipeline(project_id: str):
+async def cancel_pipeline(
+    project_id: str,
+    user: dict = Depends(get_current_user)
+):
     try:
         await orchestrator.cancel_pipeline(project_id)
         return {"status": "cancelled", "project_id": project_id}
@@ -166,7 +177,11 @@ async def cancel_pipeline(project_id: str):
 
 
 @app.post("/api/agents/execute")
-async def execute_agent(request: ExecuteAgentRequest, background_tasks: BackgroundTasks):
+async def execute_agent(
+    request: ExecuteAgentRequest, 
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user)
+):
     try:
         logger.info(f"🤖 Executing {request.agent_type}: {request.project_id}")
         
