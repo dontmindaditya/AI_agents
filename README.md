@@ -1,4 +1,4 @@
-# Webby Backend - Multi-Agent AI System
+# AgentHub - Multi-Agent AI System
 
 A comprehensive multi-agent AI system built with FastAPI, LangChain, LangGraph, and CrewAI. This platform provides various AI agents for different tasks including frontend code generation, backend development, customer support, debugging/optimization, and converting research papers to code.
 
@@ -203,7 +203,7 @@ Create a `.env` file in the project root with the following variables:
 
 ```env
 # Application Settings
-APP_NAME="Webby Backend"
+APP_NAME="AgentHub"
 DEBUG=true
 ENVIRONMENT=development
 HOST=0.0.0.0
@@ -474,7 +474,7 @@ agent_name/
 
 ## License
 
-This project is part of the Webby Backend system.
+This project is part of the AgentHub system.
 
 ---
 

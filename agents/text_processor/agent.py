@@ -12,7 +12,7 @@ class TextProcessorAgent(BaseAgent):
             name="Text Processor",
             description="Analyzes and transforms text input (uppercase, word count, validation).",
             version="1.0.0",
-            author="Webby Example",
+            author="AgentHub Example",
             tags=["text", "utility", "example"],
             inputs={
                 "type": "object",

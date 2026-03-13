@@ -1,5 +1,5 @@
 """
-Webby Backend - FastAPI Application
+AgentHub - FastAPI Application
 """
 
 import asyncio

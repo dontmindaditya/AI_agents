@@ -20,7 +20,7 @@ class FrontendAgent(BaseAgent):
             name="Frontend Agent",
             description="Generates production-ready frontend code (React, Vue, etc.) using a multi-agent workflow.",
             version="1.0.0",
-            author="Webby System",
+            author="AgentHub System",
             tags=["frontend", "react", "ui", "code-generation"],
             inputs={
                 "type": "object",

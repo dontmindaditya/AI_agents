@@ -1,5 +1,5 @@
 """
-Configuration management for Webby Backend
+Configuration management for AgentHub
 """
 
 import os
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     """Application settings from environment variables"""
     
     # Application
-    APP_NAME: str = "Webby Backend"
+    APP_NAME: str = "AgentHub"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"

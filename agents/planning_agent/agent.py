@@ -13,7 +13,7 @@ class PlanningAgent(BaseAgent):
             name="Planning Agent",
             description="Analyzes requirements and creates a comprehensive project structure and task list.",
             version="1.0.0",
-            author="Webby System",
+            author="AgentHub System",
             tags=["planning", "architecture", "strategy"],
             inputs={
                 "type": "object",
