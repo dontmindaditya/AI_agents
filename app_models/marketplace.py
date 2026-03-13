@@ -1,26 +1,42 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from uuid import UUID
+import re
 
 # Shared Models
 
 class AgentCategory(BaseModel):
     id: UUID
-    name: str
-    slug: str
-    description: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=100)
+    slug: str = Field(..., pattern=r"^[a-z0-9-]+$")
+    description: Optional[str] = Field(None, max_length=500)
     
     class Config:
         from_attributes = True
 
 class AgentBase(BaseModel):
-    name: str
-    description: str
-    detailed_description: Optional[str] = None
-    icon_url: Optional[str] = None
-    pricing_tier: str = 'free'
-    metadata: Dict[str, Any] = {}
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(..., min_length=1, max_length=1000)
+    detailed_description: Optional[str] = Field(None, max_length=5000)
+    icon_url: Optional[str] = Field(None, max_length=500)
+    pricing_tier: str = Field(default='free')
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    @field_validator('pricing_tier')
+    @classmethod
+    def validate_pricing_tier(cls, v: str) -> str:
+        allowed = ['free', 'basic', 'pro', 'enterprise']
+        if v.lower() not in allowed:
+            raise ValueError(f'pricing_tier must be one of: {", ".join(allowed)}')
+        return v.lower()
+    
+    @field_validator('icon_url')
+    @classmethod
+    def validate_icon_url(cls, v: Optional[str]) -> Optional[str]:
+        if v and not (v.startswith('http://') or v.startswith('https://') or v.startswith('/')):
+            raise ValueError('icon_url must be a valid URL or absolute path')
+        return v
 
 class AgentSchema(AgentBase):
     id: UUID
@@ -46,36 +62,68 @@ class AgentDetail(AgentSchema):
 # Request Models
 
 class AgentCreateRequest(AgentBase):
-    slug: Optional[str] = None # Can be auto-generated
+    slug: Optional[str] = Field(None, pattern=r"^[a-z0-9-]+$")
     category_id: UUID
-    frontend_component_code: str
-    backend_api_code: Optional[str] = None
-    dependencies: Dict[str, str] = {}
-    env_vars: List[Dict[str, str]] = []
-    config_schema: Dict[str, Any] = {}
+    frontend_component_code: str = Field(..., max_length=50000)
+    backend_api_code: Optional[str] = Field(None, max_length=50000)
+    dependencies: Dict[str, str] = Field(default_factory=dict)
+    env_vars: List[Dict[str, str]] = Field(default_factory=list, max_length=50)
+    config_schema: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool = False
+    
+    @field_validator('slug')
+    @classmethod
+    def validate_slug(cls, v: Optional[str]) -> Optional[str]:
+        if v and not re.match(r"^[a-z0-9-]+$", v):
+            raise ValueError('slug must contain only lowercase letters, numbers, and hyphens')
+        return v
 
 class AgentUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    detailed_description: Optional[str] = None
-    icon_url: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, min_length=1, max_length=1000)
+    detailed_description: Optional[str] = Field(None, max_length=5000)
+    icon_url: Optional[str] = Field(None, max_length=500)
     pricing_tier: Optional[str] = None
     category_id: Optional[UUID] = None
-    frontend_component_code: Optional[str] = None
-    backend_api_code: Optional[str] = None
+    frontend_component_code: Optional[str] = Field(None, max_length=50000)
+    backend_api_code: Optional[str] = Field(None, max_length=50000)
     dependencies: Optional[Dict[str, str]] = None
-    env_vars: Optional[List[Dict[str, str]]] = None
+    env_vars: Optional[List[Dict[str, str]]] = Field(None, max_length=50)
     config_schema: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
     metadata: Optional[Dict[str, Any]] = None
+    
+    @field_validator('pricing_tier')
+    @classmethod
+    def validate_pricing_tier(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            allowed = ['free', 'basic', 'pro', 'enterprise']
+            if v.lower() not in allowed:
+                raise ValueError(f'pricing_tier must be one of: {", ".join(allowed)}')
+            return v.lower()
+        return v
 
 class ProjectAgentInstallRequest(BaseModel):
     agent_id: UUID
-    config: Dict[str, Any] = {}
+    config: Dict[str, Any] = Field(default_factory=dict, max_length=100)
+    
+    @field_validator('config')
+    @classmethod
+    def validate_config(cls, v: Dict) -> Dict:
+        if not isinstance(v, dict):
+            raise ValueError('config must be a dictionary')
+        return v
 
 class ProjectAgentUpdateRequest(BaseModel):
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = Field(None, max_length=100)
+    is_enabled: Optional[bool] = None
+    
+    @field_validator('config')
+    @classmethod
+    def validate_config(cls, v: Optional[Dict]) -> Optional[Dict]:
+        if v is not None and not isinstance(v, dict):
+            raise ValueError('config must be a dictionary')
+        return v
     is_enabled: Optional[bool] = None
 
 # Response Models

@@ -9,10 +9,13 @@ from typing import Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from pydantic import model_validator
+import re
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from pydantic import ValidationError
 
 
 from config import settings
@@ -40,6 +43,24 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
+def validation_exception_handler(request: Request, exc: ValidationError):
+    errors = []
+    for error in exc.errors():
+        errors.append({
+            "field": ".".join(str(loc) for loc in error["loc"]),
+            "message": error["msg"],
+            "type": error["type"]
+        })
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Validation error",
+            "errors": errors,
+            "message": "Please check your input and try again."
+        }
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager"""
@@ -63,6 +84,7 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+app.add_exception_handler(ValidationError, validation_exception_handler)
 
 app.include_router(marketplace.router)
 app.include_router(agent_management.router)
@@ -78,20 +100,79 @@ app.add_middleware(
 
 
 class ExecuteAgentRequest(BaseModel):
-    project_id: str
-    agent_type: str
-    task_description: str
+    project_id: str = Field(..., min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
+    agent_type: str = Field(..., min_length=1, max_length=50)
+    task_description: str = Field(..., min_length=1, max_length=5000)
     context: Dict = Field(default_factory=dict)
+    
+    @field_validator('project_id')
+    @classmethod
+    def validate_project_id(cls, v: str) -> str:
+        if not re.match(r"^[a-zA-Z0-9_-]+$", v):
+            raise ValueError('project_id must contain only alphanumeric characters, hyphens, and underscores')
+        return v
+    
+    @field_validator('agent_type')
+    @classmethod
+    def validate_agent_type(cls, v: str) -> str:
+        allowed_agents = ['frontend', 'backend', 'planner', 'research', 'uiux', 'debugger', 'paper2code']
+        if v.lower() not in allowed_agents:
+            raise ValueError(f'agent_type must be one of: {", ".join(allowed_agents)}')
+        return v.lower()
+    
+    @field_validator('context')
+    @classmethod
+    def validate_context(cls, v: Dict) -> Dict:
+        if not isinstance(v, dict):
+            raise ValueError('context must be a dictionary')
+        return v
 
 
 class PipelineExecuteRequest(BaseModel):
-    project_id: str
-    project_name: str
-    project_type: str
-    framework: str
-    description: str
+    project_id: str = Field(..., min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
+    project_name: str = Field(..., min_length=1, max_length=200)
+    project_type: str = Field(..., min_length=1, max_length=50)
+    framework: str = Field(..., min_length=1, max_length=50)
+    description: str = Field(..., min_length=1, max_length=10000)
     design_preferences: Dict = Field(default_factory=dict)
     additional_context: Dict = Field(default_factory=dict)
+    
+    @field_validator('project_id')
+    @classmethod
+    def validate_project_id(cls, v: str) -> str:
+        if not re.match(r"^[a-zA-Z0-9_-]+$", v):
+            raise ValueError('project_id must contain only alphanumeric characters, hyphens, and underscores')
+        return v
+    
+    @field_validator('project_name')
+    @classmethod
+    def validate_project_name(cls, v: str) -> str:
+        if len(v.strip()) < 1:
+            raise ValueError('project_name cannot be empty or whitespace only')
+        return v.strip()
+    
+    @field_validator('project_type')
+    @classmethod
+    def validate_project_type(cls, v: str) -> str:
+        allowed_types = ['web', 'mobile', 'desktop', 'api', 'fullstack', 'library']
+        if v.lower() not in allowed_types:
+            raise ValueError(f'project_type must be one of: {", ".join(allowed_types)}')
+        return v.lower()
+    
+    @field_validator('framework')
+    @classmethod
+    def validate_framework(cls, v: str) -> str:
+        allowed_frameworks = ['react', 'vue', 'angular', 'nextjs', 'django', 'fastapi', 'flask', 'express', 'spring']
+        if v.lower() not in allowed_frameworks:
+            raise ValueError(f'framework must be one of: {", ".join(allowed_frameworks)}')
+        return v.lower()
+    
+    @field_validator('design_preferences', 'additional_context')
+    @classmethod
+    def validate_dict_fields(cls, v: Dict) -> Dict:
+        if not isinstance(v, dict):
+            raise ValueError('design_preferences and additional_context must be dictionaries')
+        return v
 
 
 @app.get("/")

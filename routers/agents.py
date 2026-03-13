@@ -3,7 +3,7 @@ API endpoint to list and run all available agents
 """
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from agents.registry import agent_registry
@@ -15,8 +15,24 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 class AgentRunRequest(BaseModel):
-    inputs: Dict[str, Any]
+    inputs: Dict[str, Any] = Field(..., min_length=1)
     context: Optional[Dict[str, Any]] = None
+    
+    @field_validator('inputs')
+    @classmethod
+    def validate_inputs(cls, v: Dict) -> Dict:
+        if not isinstance(v, dict):
+            raise ValueError('inputs must be a dictionary')
+        if len(v) > 100:
+            raise ValueError('inputs cannot have more than 100 keys')
+        return v
+    
+    @field_validator('context')
+    @classmethod
+    def validate_context(cls, v: Optional[Dict]) -> Optional[Dict]:
+        if v is not None and not isinstance(v, dict):
+            raise ValueError('context must be a dictionary')
+        return v
 
 
 @router.get("/agents/list", response_model=List[Dict[str, Any]])

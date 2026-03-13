@@ -1,18 +1,32 @@
 import asyncio
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from agents.registry import agent_registry
 from agents.base import BaseAgent
 
 class PipelineStep(BaseModel):
-    agent_id: str
-    inputs: Dict[str, Any] = {}
-    output_key: Optional[str] = None  # Key to store result in context
+    agent_id: str = Field(..., min_length=1, max_length=100)
+    inputs: Dict[str, Any] = Field(default_factory=dict)
+    output_key: Optional[str] = Field(None, max_length=100)
+    
+    @field_validator('agent_id')
+    @classmethod
+    def validate_agent_id(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('agent_id cannot be empty')
+        return v.strip()
 
 class PipelineConfig(BaseModel):
-    name: str = "Dynamic Pipeline"
-    steps: List[PipelineStep]
-    initial_context: Dict[str, Any] = {}
+    name: str = Field(default="Dynamic Pipeline", min_length=1, max_length=200)
+    steps: List[PipelineStep] = Field(..., min_length=1, max_length=50)
+    initial_context: Dict[str, Any] = Field(default_factory=dict)
+    
+    @field_validator('steps')
+    @classmethod
+    def validate_steps(cls, v: List[PipelineStep]) -> List[PipelineStep]:
+        if not v:
+            raise ValueError('steps cannot be empty')
+        return v
 
 class DynamicPipeline:
     """
