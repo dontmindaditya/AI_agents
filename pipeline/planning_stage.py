@@ -3,6 +3,7 @@
 from typing import Dict, Any
 from pipeline.adapters import PlanningAdapter
 from utils.logger import get_logger
+from services.websocket_manager import WebSocketManager
 
 logger = get_logger(__name__)
 
@@ -10,7 +11,7 @@ logger = get_logger(__name__)
 class PlanningStage:
     """Planning stage"""
     
-    def __init__(self, websocket_manager):
+    def __init__(self, websocket_manager: WebSocketManager):
         self.ws_manager = websocket_manager
         self.adapter = PlanningAdapter()
     

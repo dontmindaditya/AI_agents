@@ -4,6 +4,7 @@ from typing import Dict, Any, List
 from pipeline.adapters import FrontendAdapter
 from services.code_generator import CodeGenerator
 from utils.logger import get_logger
+from services.websocket_manager import WebSocketManager
 
 logger = get_logger(__name__)
 
@@ -11,7 +12,7 @@ logger = get_logger(__name__)
 class GenerationStage:
     """Generation stage"""
     
-    def __init__(self, websocket_manager):
+    def __init__(self, websocket_manager: WebSocketManager):
         self.ws_manager = websocket_manager
         self.frontend_adapter = FrontendAdapter()
     

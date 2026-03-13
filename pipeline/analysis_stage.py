@@ -8,6 +8,7 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agents', 'uiux-agent'))
 
 from utils.logger import get_logger
+from services.websocket_manager import WebSocketManager
 
 logger = get_logger(__name__)
 
@@ -15,7 +16,7 @@ logger = get_logger(__name__)
 class AnalysisStage:
     """Analysis stage"""
     
-    def __init__(self, websocket_manager):
+    def __init__(self, websocket_manager: WebSocketManager):
         self.ws_manager = websocket_manager
     
     async def execute(self, project_id: str, context: Dict[str, Any]) -> Dict[str, Any]:

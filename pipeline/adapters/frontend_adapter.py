@@ -4,6 +4,7 @@ Bridges pipeline to user's frontend_agent implementation
 """
 import sys
 import os
+from typing import Dict, Any, Optional, List
 
 # Add frontend_agent to Python path
 frontend_agent_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'agents', 'frontend_agent')
@@ -27,7 +28,7 @@ class FrontendAdapter:
         else:
             self.graph = None
     
-    def generate_components(self, description: str, framework: str = "react") -> dict:
+    def generate_components(self, description: str, framework: str = "react") -> Dict[str, Any]:
         """Generate frontend components"""
         if not self.graph:
             # Fallback if agent not available
@@ -47,7 +48,7 @@ export default function App() {{
       </div>
     </div>
   );
-}}"""
+ }}"""
             
             return {
                 "files": [{
@@ -67,7 +68,7 @@ export default function App() {{
             generated_code = final_state.get("optimized_code") or final_state.get("generated_code")
             
             # Convert to file structure
-            files = []
+            files: List[Dict[str, Any]] = []
             if generated_code:
                 files.append({
                     "path": "src/App.tsx",

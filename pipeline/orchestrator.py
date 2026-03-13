@@ -1,7 +1,7 @@
 """Pipeline Orchestrator"""
 
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 from pipeline.planning_stage import PlanningStage
 from pipeline.analysis_stage import AnalysisStage
@@ -9,6 +9,7 @@ from pipeline.generation_stage import GenerationStage
 from pipeline.integration_stage import IntegrationStage
 from utils.logger import get_logger
 from config import PIPELINE_STAGES
+from services.websocket_manager import WebSocketManager
 
 logger = get_logger(__name__)
 
@@ -16,8 +17,8 @@ logger = get_logger(__name__)
 class PipelineOrchestrator:
     """Main pipeline coordinator"""
     
-    def __init__(self, websocket_manager):
-        self.ws_manager = websocket_manager
+    def __init__(self, websocket_manager: WebSocketManager):
+        self.ws_manager: WebSocketManager = websocket_manager
         self.active_pipelines: Dict[str, Dict[str, Any]] = {}
         
         self.stages = {

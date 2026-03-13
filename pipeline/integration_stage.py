@@ -5,13 +5,14 @@ import re
 from typing import Dict, Any, List
 from database.client import supabase_client
 from utils.logger import get_logger
+from services.websocket_manager import WebSocketManager
 
 logger = get_logger(__name__)
 
 class IntegrationStage:
     """Agent Integration Stage"""
     
-    def __init__(self, websocket_manager):
+    def __init__(self, websocket_manager: WebSocketManager):
         self.ws_manager = websocket_manager
     
     async def execute(self, project_id: str, context: Dict[str, Any]) -> Dict[str, Any]:

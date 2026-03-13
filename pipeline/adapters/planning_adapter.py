@@ -4,6 +4,7 @@ Bridges pipeline to user's planning_agent implementation
 """
 import sys
 import os
+from typing import Dict, Any, Optional
 
 # Add planning_agent directory to path
 planning_agent_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'agents', 'planning_agent')
@@ -28,7 +29,7 @@ class PlanningAdapter:
         else:
             self.agent = None
     
-    def create_plan(self, description: str, context: dict = None) -> dict:
+    def create_plan(self, description: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Create project plan"""
         if not self.agent:
             # Fallback if agent not available
