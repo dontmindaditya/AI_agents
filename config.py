@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     
     # AI Model Settings
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
-    GPT_MODEL: str = "gpt-4-turbo-preview"
+    GPT_MODEL: str = "gpt-4o"
     GROQ_MODEL: str = "llama-3.1-70b-versatile"
     GEMINI_MODEL: str = "gemini-1.5-pro"
     
