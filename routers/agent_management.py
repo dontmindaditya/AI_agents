@@ -1,6 +1,8 @@
 from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException, Body, Path, Request
 from uuid import UUID
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from database.client import supabase_client
 from app_models.marketplace import (
@@ -8,15 +10,18 @@ from app_models.marketplace import (
     ProjectAgentResponse, ProjectAgentInstallRequest, ProjectAgentUpdateRequest
 )
 from utils.logger import setup_logger
+from config import settings
 
 logger = setup_logger(__name__)
 
 router = APIRouter(tags=["agent-management"])
+limiter = Limiter(key_func=get_remote_address)
 
 # --- Admin Endpoints ---
 
 @router.post("/api/admin/agents", response_model=AgentDetail)
-async def create_agent(agent: AgentCreateRequest):
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def create_agent(request: Request, agent: AgentCreateRequest):
     """Create a new agent (Admin)"""
     try:
         data = agent.model_dump(exclude_none=True)
@@ -33,7 +38,8 @@ async def create_agent(agent: AgentCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/api/admin/agents/{agent_id}", response_model=AgentDetail)
-async def update_agent(agent_id: UUID, update: AgentUpdateRequest):
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def update_agent(request: Request, agent_id: UUID, update: AgentUpdateRequest):
     """Update an existing agent (Admin)"""
     try:
         data = update.model_dump(exclude_none=True)
@@ -54,7 +60,8 @@ async def update_agent(agent_id: UUID, update: AgentUpdateRequest):
 # --- Project Management Endpoints ---
 
 @router.get("/api/projects/{project_id}/agents", response_model=List[ProjectAgentResponse])
-async def list_project_agents(project_id: str):
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def list_project_agents(request: Request, project_id: str):
     """List agents installed in a project"""
     try:
         # Join with agent_catalog to get basic info
@@ -69,7 +76,9 @@ async def list_project_agents(project_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/projects/{project_id}/agents", response_model=ProjectAgentResponse)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def install_agent(
+    request: Request,
     project_id: str,
     install_req: ProjectAgentInstallRequest
 ):
@@ -101,7 +110,9 @@ async def install_agent(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.patch("/api/projects/{project_id}/agents/{agent_id}", response_model=ProjectAgentResponse)
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def update_project_agent(
+    request: Request,
     project_id: str,
     agent_id: UUID,
     update: ProjectAgentUpdateRequest
@@ -135,7 +146,8 @@ async def update_project_agent(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/api/projects/{project_id}/agents/{agent_id}")
-async def uninstall_agent(project_id: str, agent_id: UUID):
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def uninstall_agent(request: Request, project_id: str, agent_id: UUID):
     """Uninstall an agent from a project"""
     try:
         result = supabase_client.client.table("project_agents")\
@@ -150,6 +162,7 @@ async def uninstall_agent(project_id: str, agent_id: UUID):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/projects/{project_id}/refresh-agents")
+@limiter.limit(settings.RATE_LIMIT_PIPELINE)
 async def refresh_agents(request: Request, project_id: str):
     """Regenerate agent integration for an active project (Hot Reload)"""
     try:

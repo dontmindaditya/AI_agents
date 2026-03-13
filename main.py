@@ -6,10 +6,13 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 
 from config import settings
@@ -22,6 +25,19 @@ from routers import marketplace, agent_management, agents
 logger = setup_logger(__name__)
 ws_manager = WebSocketManager()
 orchestrator: PipelineOrchestrator = None
+
+limiter = Limiter(key_func=get_remote_address)
+
+
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Your limit is exceeded. Please wait for sometime before making another request.",
+            "retry_after": exc.detail,
+            "message": "Rate limit exceeded"
+        }
+    )
 
 
 @asynccontextmanager
@@ -44,6 +60,9 @@ app = FastAPI(
     version=settings.APP_VERSION,
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(marketplace.router)
 app.include_router(agent_management.router)
@@ -76,7 +95,8 @@ class PipelineExecuteRequest(BaseModel):
 
 
 @app.get("/")
-async def root():
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def root(request: Request):
     return {
         "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
@@ -85,7 +105,8 @@ async def root():
 
 
 @app.get("/health")
-async def health():
+@limiter.limit(settings.RATE_LIMIT_HEALTH)
+async def health(request: Request):
     return {
         "status": "healthy",
         "active_connections": len(ws_manager.active_connections),
@@ -94,6 +115,7 @@ async def health():
 
 
 @app.websocket("/ws/{project_id}")
+@limiter.limit(settings.RATE_LIMIT_WS)
 async def websocket_endpoint(websocket: WebSocket, project_id: str):
     await ws_manager.connect(websocket, project_id)
     
@@ -121,30 +143,32 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
 
 
 @app.post("/api/pipeline/execute")
+@limiter.limit(settings.RATE_LIMIT_PIPELINE)
 async def execute_pipeline(
-    request: PipelineExecuteRequest, 
+    request: Request,
+    pipeline_request: PipelineExecuteRequest, 
     background_tasks: BackgroundTasks,
     user: dict = Depends(get_current_user)
 ):
     try:
-        logger.info(f"🎯 Starting pipeline: {request.project_id}")
+        logger.info(f"🎯 Starting pipeline: {pipeline_request.project_id}")
         
         background_tasks.add_task(
             orchestrator.execute_pipeline,
-            project_id=request.project_id,
+            project_id=pipeline_request.project_id,
             project_data={
-                "name": request.project_name,
-                "type": request.project_type,
-                "framework": request.framework,
-                "description": request.description,
-                "design_preferences": request.design_preferences,
-                "additional_context": request.additional_context
+                "name": pipeline_request.project_name,
+                "type": pipeline_request.project_type,
+                "framework": pipeline_request.framework,
+                "description": pipeline_request.description,
+                "design_preferences": pipeline_request.design_preferences,
+                "additional_context": pipeline_request.additional_context
             }
         )
         
         return {
             "status": "started",
-            "project_id": request.project_id,
+            "project_id": pipeline_request.project_id,
             "message": "Pipeline started"
         }
     except Exception as e:
@@ -153,7 +177,9 @@ async def execute_pipeline(
 
 
 @app.get("/api/pipeline/status/{project_id}")
+@limiter.limit(settings.RATE_LIMIT_PIPELINE)
 async def get_pipeline_status(
+    request: Request,
     project_id: str,
     user: dict = Depends(get_current_user)
 ):
@@ -165,7 +191,9 @@ async def get_pipeline_status(
 
 
 @app.post("/api/pipeline/cancel/{project_id}")
+@limiter.limit(settings.RATE_LIMIT_PIPELINE)
 async def cancel_pipeline(
+    request: Request,
     project_id: str,
     user: dict = Depends(get_current_user)
 ):
@@ -177,25 +205,27 @@ async def cancel_pipeline(
 
 
 @app.post("/api/agents/execute")
+@limiter.limit(settings.RATE_LIMIT_AGENTS)
 async def execute_agent(
-    request: ExecuteAgentRequest, 
+    request: Request,
+    agent_request: ExecuteAgentRequest, 
     background_tasks: BackgroundTasks,
     user: dict = Depends(get_current_user)
 ):
     try:
-        logger.info(f"🤖 Executing {request.agent_type}: {request.project_id}")
+        logger.info(f"🤖 Executing {agent_request.agent_type}: {agent_request.project_id}")
         
         background_tasks.add_task(
             orchestrator.execute_agent,
-            project_id=request.project_id,
-            agent_type=request.agent_type,
-            task_description=request.task_description,
-            context=request.context
+            project_id=agent_request.project_id,
+            agent_type=agent_request.agent_type,
+            task_description=agent_request.task_description,
+            context=agent_request.context
         )
         
         return {
             "status": "started",
-            "agent_type": request.agent_type
+            "agent_type": agent_request.agent_type
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -66,6 +66,17 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
     
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_DEFAULT: str = "100/minute"
+    RATE_LIMIT_STORAGE_URL: Optional[str] = "memory://"
+    
+    # Rate limits per endpoint
+    RATE_LIMIT_PIPELINE: str = "10/minute"
+    RATE_LIMIT_AGENTS: str = "30/minute"
+    RATE_LIMIT_WS: str = "60/minute"
+    RATE_LIMIT_HEALTH: str = "200/minute"
+    
     class Config:
         # Check both backend/.env and parent directory .env
         current_dir = Path(__file__).parent

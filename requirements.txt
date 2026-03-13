@@ -81,3 +81,6 @@ pandas
 pytest
 pytest-asyncio
 pytest-cov
+
+# Rate Limiting
+slowapi

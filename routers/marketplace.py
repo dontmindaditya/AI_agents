@@ -1,10 +1,13 @@
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from uuid import UUID
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from database.client import supabase_client
 from app_models.marketplace import AgentSchema, AgentDetail, AgentCategory
 from utils.logger import setup_logger
+from config import settings
 
 logger = setup_logger(__name__)
 
@@ -12,9 +15,13 @@ router = APIRouter(
     prefix="/api/marketplace",
     tags=["marketplace"]
 )
+limiter = Limiter(key_func=get_remote_address)
+
 
 @router.get("/agents", response_model=List[AgentSchema])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def list_agents(
+    request: Request,
     category: Optional[str] = Query(None, description="Filter by category slug"),
     search: Optional[str] = Query(None, description="Search query")
 ):
@@ -42,7 +49,8 @@ async def list_agents(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/agents/{agent_id}", response_model=AgentDetail)
-async def get_agent_details(agent_id: UUID):
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def get_agent_details(request: Request, agent_id: UUID):
     """Get full details for a specific agent"""
     try:
         result = supabase_client.client.table("agent_catalog")\
@@ -62,7 +70,8 @@ async def get_agent_details(agent_id: UUID):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/categories", response_model=List[AgentCategory])
-async def list_categories():
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
+async def list_categories(request: Request):
     """List all agent categories"""
     try:
         result = supabase_client.client.table("agent_categories").select("*").order("name").execute()

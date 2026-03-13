@@ -1,20 +1,28 @@
 """
 API endpoint to list and run all available agents
 """
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from agents.registry import agent_registry
 from utils.auth import get_current_user, require_role
+from config import settings
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
+
 
 class AgentRunRequest(BaseModel):
     inputs: Dict[str, Any]
     context: Optional[Dict[str, Any]] = None
 
+
 @router.get("/agents/list", response_model=List[Dict[str, Any]])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def list_available_agents(
+    request: Request,
     user: dict = Depends(get_current_user)
 ):
     """
@@ -24,7 +32,9 @@ async def list_available_agents(
     return agent_registry.get_all_agents()
 
 @router.get("/agents/{agent_id}")
+@limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def get_agent_details(
+    request: Request,
     agent_id: str,
     user: dict = Depends(get_current_user)
 ):
@@ -35,9 +45,11 @@ async def get_agent_details(
     return agent
 
 @router.post("/agents/{agent_id}/run")
+@limiter.limit(settings.RATE_LIMIT_AGENTS)
 async def run_agent(
+    request: Request,
     agent_id: str, 
-    request: AgentRunRequest,
+    agent_request: AgentRunRequest,
     user: dict = Depends(get_current_user)
 ):
     """Execute a specific agent"""
@@ -50,10 +62,10 @@ async def run_agent(
         agent = agent_class()
         
         # Validate inputs (optional, based on metadata)
-        # agent.validate_inputs(request.inputs)
+        # agent.validate_inputs(agent_request.inputs)
         
         # Run agent
-        result = await agent.run(request.inputs, request.context)
+        result = await agent.run(agent_request.inputs, agent_request.context)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -63,7 +75,9 @@ async def run_agent(
 from pipeline.dynamic import DynamicPipeline, PipelineConfig
 
 @router.post("/pipelines/run")
+@limiter.limit(settings.RATE_LIMIT_PIPELINE)
 async def run_pipeline(
+    request: Request,
     config: PipelineConfig,
     user: dict = Depends(get_current_user)
 ):
