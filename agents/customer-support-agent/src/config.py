@@ -4,6 +4,7 @@ Handles environment variables and API key setup.
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from typing import Optional
 
@@ -12,7 +13,8 @@ class Config:
     
     def __init__(self):
         """Initialize configuration by loading environment variables."""
-        load_dotenv()
+        root_dir = Path(__file__).parent.parent.parent
+        load_dotenv(root_dir / ".env")
         self._validate_config()
     
     @property

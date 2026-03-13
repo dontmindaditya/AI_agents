@@ -1,8 +1,11 @@
 import os
+from pathlib import Path
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load from root .env file
+root_dir = Path(__file__).parent.parent.parent.parent
+load_dotenv(root_dir / ".env")
 
 
 class ClaudeLLM:

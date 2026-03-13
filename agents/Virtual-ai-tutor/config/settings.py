@@ -3,6 +3,8 @@ from typing import Optional
 import os
 from pathlib import Path
 
+root_dir = Path(__file__).parent.parent.parent
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables or .env file"""
@@ -14,7 +16,7 @@ class Settings(BaseSettings):
 
     # === Model Configuration ===
     default_llm_provider: str = "openai"
-    default_model: str = "gpt-4-turbo-preview"
+    default_model: str = "gpt-4o"
     temperature: float = 0.7
     max_tokens: int = 2000
 
@@ -29,7 +31,7 @@ class Settings(BaseSettings):
     # === NEW: Allow extra fields from your large .env file ===
     # This prevents the "extra_forbidden" validation errors
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=root_dir / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="allow",  # ← Critical line: accepts GROQ_API_KEY, GEMINI_API_KEY, SUPABASE keys, etc.

@@ -16,8 +16,8 @@ class LLMProvider:
     SUPPORTED_PROVIDERS = {
         "openai": {
             "class": ChatOpenAI,
-            "default_model": "gpt-4-turbo-preview",
-            "models": ["gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo", "gpt-4o"]
+            "default_model": "gpt-4o",
+            "models": ["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
         },
         "anthropic": {
             "class": ChatAnthropic,

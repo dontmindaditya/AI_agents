@@ -2,11 +2,12 @@
 Quick test script to verify the agent is working
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env files
-load_dotenv(".env.local")
-load_dotenv()
+# Load .env files from root
+root_dir = Path(__file__).parent.parent.parent
+load_dotenv(root_dir / ".env", override=True)
 
 print("🔍 Checking environment variables...")
 print()

@@ -16,7 +16,8 @@ def check_setup():
     warnings = []
     
     # Check 1: .env file exists (check multiple variants)
-    env_files = [".env", ".env.local", "env(2).example"]
+    root_dir = Path(__file__).parent.parent.parent
+    env_files = [root_dir / ".env", ".env", ".env.local", "env(2).example"]
     env_found = None
     for env_file in env_files:
         if Path(env_file).exists():
@@ -33,9 +34,7 @@ def check_setup():
         )
     
     # Load environment variables from all possible sources
-    load_dotenv()
-    load_dotenv(".env.local")
-    load_dotenv(".env")
+    load_dotenv(root_dir / ".env", override=True)
     
     # Check 2: API keys
     openai_key = os.getenv("OPENAI_API_KEY", "")

@@ -1,12 +1,15 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from typing import Literal
 
-load_dotenv()
+# Load from root .env file
+root_dir = Path(__file__).parent.parent.parent
+load_dotenv(root_dir / ".env")
 
 # LLM Configuration
 LLM_PROVIDER: Literal["openai", "anthropic", "google"] = os.getenv("LLM_PROVIDER", "openai")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4-turbo-preview")
+LLM_MODEL = os.getenv("GPT_MODEL", "gpt-4o")
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 
 # API Keys

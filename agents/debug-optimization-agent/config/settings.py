@@ -1,17 +1,19 @@
 """Configuration settings for Debug Optimization Agent."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+root_dir = Path(__file__).parent.parent.parent
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=root_dir / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore"
@@ -31,7 +33,7 @@ class Settings(BaseSettings):
 
     # Model Names
     openai_model: str = Field(
-        default="gpt-4-turbo-preview",
+        default="gpt-4o",
         description="OpenAI model name"
     )
     anthropic_model: str = Field(

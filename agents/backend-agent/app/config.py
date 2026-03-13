@@ -1,6 +1,7 @@
 """
 Configuration and Settings Management
 """
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 from functools import lru_cache
@@ -37,7 +38,7 @@ class Settings(BaseSettings):
     
     # LLM Configuration
     DEFAULT_LLM_PROVIDER: str = "openai"
-    DEFAULT_MODEL: str = "gpt-4-turbo-preview"
+    DEFAULT_MODEL: str = "gpt-4o"
     TEMPERATURE: float = 0.7
     MAX_TOKENS: int = 2000
     
@@ -54,7 +55,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
     
     class Config:
-        env_file = ".env"
+        env_file = Path(__file__).parent.parent.parent / ".env"
         case_sensitive = True
         extra = "ignore"  # Ignore extra fields in .env file
     

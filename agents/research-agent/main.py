@@ -36,8 +36,9 @@ from utils import (
     PDF_ANALYSIS_TASK_DESCRIPTION
 )
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from root .env
+root_dir = Path(__file__).parent.parent.parent
+load_dotenv(root_dir / ".env")
 
 
 class ResearchAgent:
@@ -54,7 +55,7 @@ class ResearchAgent:
         
         # Initialize LLM
         self.llm = ChatOpenAI(
-            model=os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview'),
+            model=os.getenv('OPENAI_MODEL', 'gpt-4o'),
             temperature=0.7
         )
         

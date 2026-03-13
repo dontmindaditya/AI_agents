@@ -4,10 +4,12 @@
 Configuration settings for Paper2Code Agent System
 """
 
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Literal
 
+root_dir = Path(__file__).parent.parent.parent
 
 class Settings(BaseSettings):
     """
@@ -16,7 +18,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=root_dir / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="allow"  # ← Critical: Allows extra env vars without crashing

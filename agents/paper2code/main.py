@@ -14,8 +14,9 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import print as rprint
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from root .env
+root_dir = Path(__file__).parent.parent.parent
+load_dotenv(root_dir / ".env")
 
 console = Console()
 

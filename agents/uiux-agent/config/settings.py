@@ -7,10 +7,9 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from multiple sources
-# Priority: .env > .env.local > environment variables
-load_dotenv(".env.local", override=False)  # Load .env.local first (lower priority)
-load_dotenv(override=True)  # Load .env second (higher priority)
+# Load from root .env file
+root_dir = Path(__file__).parent.parent.parent
+load_dotenv(root_dir / ".env", override=True)
 
 
 class Settings(BaseSettings):
@@ -22,7 +21,7 @@ class Settings(BaseSettings):
     
     # LLM Configuration
     default_llm_provider: Literal["openai", "anthropic"] = "openai"
-    openai_model: str = "gpt-4-turbo-preview"
+    openai_model: str = "gpt-4o"
     anthropic_model: str = "claude-3-5-sonnet-20241022"
     
     # Agent Configuration
@@ -39,7 +38,7 @@ class Settings(BaseSettings):
     output_directory: Path = Path("./outputs")
     
     class Config:
-        env_file = ".env"
+        env_file = root_dir / ".env"
         env_file_encoding = "utf-8"
     
     def get_supported_formats(self) -> list[str]:

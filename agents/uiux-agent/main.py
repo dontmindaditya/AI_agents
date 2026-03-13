@@ -15,7 +15,8 @@ import sys
 # Check setup before importing agents
 try:
     from dotenv import load_dotenv
-    load_dotenv()  # Load .env file
+    root_dir = Path(__file__).parent.parent.parent
+    load_dotenv(root_dir / ".env")  # Load .env file
 except ImportError:
     print("Error: python-dotenv not installed. Run: pip install python-dotenv")
     sys.exit(1)
