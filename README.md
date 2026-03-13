@@ -222,7 +222,7 @@ GEMINI_API_KEY=your_google_key
 
 # Model Settings
 CLAUDE_MODEL=claude-sonnet-4-20250514
-GPT_MODEL=gpt-4-turbo-preview
+GPT_MODEL=gpt-4o
 GROQ_MODEL=llama-3.1-70b-versatile
 GEMINI_MODEL=gemini-1.5-pro
 
@@ -334,15 +334,15 @@ python main.py interactive
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/pipeline/execute` | Execute a pipeline |
-| GET | `/api/pipeline/status/{project_id}` | Get pipeline status |
-| POST | `/api/pipeline/cancel/{project_id}` | Cancel a pipeline |
+| POST | `/api/pipeline/execute` | Execute a pipeline (requires API key) |
+| GET | `/api/pipeline/status/{project_id}` | Get pipeline status (requires API key) |
+| POST | `/api/pipeline/cancel/{project_id}` | Cancel a pipeline (requires API key) |
 
 ### Agent Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/agents/execute` | Execute a specific agent |
+| POST | `/api/agents/execute` | Execute a specific agent (requires API key) |
 
 ---
 
@@ -360,8 +360,50 @@ python main.py interactive
 | `GEMINI_API_KEY` | Yes* | Google Gemini API key | - |
 | `SUPABASE_URL` | No | Supabase URL | - |
 | `SUPABASE_KEY` | No | Supabase key | - |
+| `API_KEY_ENABLED` | No | Enable API key authentication | true |
+| `API_KEYS` | No | List of valid API keys (comma-separated) | - |
+| `RATE_LIMIT_ENABLED` | No | Enable rate limiting | true |
+| `RATE_LIMIT_DEFAULT` | No | Default rate limit | "100/minute" |
+| `RATE_LIMIT_PIPELINE` | No | Pipeline endpoint limit | "10/minute" |
+| `RATE_LIMIT_AGENTS` | No | Agent endpoint limit | "30/minute" |
 
 *At least one LLM API key is required for agent functionality.
+
+---
+
+## Security Features
+
+### API Key Authentication
+All agent endpoints require API key authentication via the `X-API-Key` header.
+
+```bash
+# Example request with API key
+curl -H "X-API-Key: your-api-key" http://localhost:8000/api/agents/list
+```
+
+### Rate Limiting
+Rate limiting is enabled by default to prevent abuse:
+- Default: 100 requests/minute
+- Pipeline endpoints: 10 requests/minute
+- Agent endpoints: 30 requests/minute
+- Health check: 200 requests/minute
+
+When rate limit is exceeded, returns HTTP 429 with:
+```json
+{
+  "detail": "Your limit is exceeded. Please wait for sometime before making another request.",
+  "retry_after": "60 per 1 minute"
+}
+```
+
+### Input Validation
+All API endpoints include robust input validation:
+- Project ID: alphanumeric with hyphens/underscores only
+- Agent type: must be one of allowed types
+- Project type: must be web, mobile, desktop, api, fullstack, or library
+- Framework: must be react, vue, angular, nextjs, django, fastapi, flask, express, or spring
+- String fields: min/max length limits
+- Dictionary fields: max key limits
 
 ---
 
