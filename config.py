@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_WS: str = "60/minute"
     RATE_LIMIT_HEALTH: str = "200/minute"
     
+    # API Key Authentication
+    API_KEY_ENABLED: bool = True
+    API_KEYS: list[str] = []  # List of valid API keys
+    
     class Config:
         # Check both backend/.env and parent directory .env
         current_dir = Path(__file__).parent

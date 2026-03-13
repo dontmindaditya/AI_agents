@@ -2,14 +2,15 @@
 Authentication module using Supabase JWT verification.
 """
 from typing import Optional, Dict, Any
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Request, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
 from jose import jwt, JWTError
 from pydantic import BaseModel
 from config import settings
 
 
 security = HTTPBearer(auto_error=False)
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 class User(BaseModel):
@@ -130,3 +131,41 @@ async def get_optional_user(
         return await get_current_user(credentials)
     except HTTPException:
         return None
+
+
+async def verify_api_key(api_key: Optional[str] = Depends(api_key_header)) -> User:
+    """
+    Verify API key from X-API-Key header.
+    
+    Requires API_KEY_ENABLED=True and API_KEYS list in settings.
+    
+    Raises:
+        HTTPException: If API key is invalid or missing
+    """
+    if not settings.API_KEY_ENABLED:
+        return User(
+            id="api-user",
+            email="api@example.com",
+            role="api_user",
+            metadata={"mode": "disabled"}
+        )
+    
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key is required. Please provide X-API-Key header.",
+            headers={"X-API-Key": "Required"},
+        )
+    
+    if settings.API_KEYS and api_key not in settings.API_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+        )
+    
+    return User(
+        id="api-user",
+        email="api@example.com",
+        role="api_user",
+        metadata={"mode": "api_key", "key_hash": hash(api_key)}
+    )

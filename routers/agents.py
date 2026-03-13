@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from agents.registry import agent_registry
-from utils.auth import get_current_user, require_role
+from utils.auth import get_current_user, require_role, verify_api_key
 from config import settings
 
 router = APIRouter()
@@ -23,7 +23,7 @@ class AgentRunRequest(BaseModel):
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def list_available_agents(
     request: Request,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(verify_api_key)
 ):
     """
     Get all available agents from the registry
@@ -36,7 +36,7 @@ async def list_available_agents(
 async def get_agent_details(
     request: Request,
     agent_id: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(verify_api_key)
 ):
     """Get details for a specific agent"""
     agent = agent_registry.get_agent_metadata(agent_id)
@@ -50,7 +50,7 @@ async def run_agent(
     request: Request,
     agent_id: str, 
     agent_request: AgentRunRequest,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(verify_api_key)
 ):
     """Execute a specific agent"""
     agent_class = agent_registry.get_agent_class(agent_id)
@@ -79,7 +79,7 @@ from pipeline.dynamic import DynamicPipeline, PipelineConfig
 async def run_pipeline(
     request: Request,
     config: PipelineConfig,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(verify_api_key)
 ):
     """
     Execute a dynamic pipeline of agents.

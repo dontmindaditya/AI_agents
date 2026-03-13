@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 
 from config import settings
 from utils.logger import setup_logger
-from utils.auth import get_current_user
+from utils.auth import get_current_user, verify_api_key
 from pipeline.orchestrator import PipelineOrchestrator
 from services.websocket_manager import WebSocketManager
 from routers import marketplace, agent_management, agents
@@ -210,7 +210,7 @@ async def execute_agent(
     request: Request,
     agent_request: ExecuteAgentRequest, 
     background_tasks: BackgroundTasks,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(verify_api_key)
 ):
     try:
         logger.info(f"🤖 Executing {agent_request.agent_type}: {agent_request.project_id}")
