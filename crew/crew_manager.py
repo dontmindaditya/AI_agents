@@ -1,11 +1,14 @@
-"""Crew Manager"""
+"""Crew Manager
+
+This module manages CrewAI crews for multi-agent collaboration.
+"""
 
 from typing import List, Dict, Any
 from crewai import Crew, Task
 from agents.base_agent import BaseAgent
-from utils.logger import get_logger
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class CrewManager:

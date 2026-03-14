@@ -1,12 +1,15 @@
-"""Groq API Client"""
+"""Groq API Client
+
+This module provides a client for interacting with Groq's API.
+"""
 
 from typing import Optional
 from groq import AsyncGroq
 from tenacity import retry, stop_after_attempt, wait_exponential
 from config import settings, AI_MODELS
-from utils.logger import get_logger
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class GroqClient:

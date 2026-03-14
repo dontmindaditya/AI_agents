@@ -18,10 +18,9 @@ from typing import Dict, Any
 # Add uiux-agent to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'agents', 'uiux-agent'))
 
-from utils.logger import get_logger
-from services.websocket_manager import WebSocketManager
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class AnalysisStage:

@@ -35,11 +35,9 @@ from pipeline.planning_stage import PlanningStage
 from pipeline.analysis_stage import AnalysisStage
 from pipeline.generation_stage import GenerationStage
 from pipeline.integration_stage import IntegrationStage
-from utils.logger import get_logger
-from config import PIPELINE_STAGES
-from services.websocket_manager import WebSocketManager
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class PipelineOrchestrator:

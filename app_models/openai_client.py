@@ -1,12 +1,15 @@
-"""OpenAI GPT API Client"""
+"""OpenAI GPT API Client
+
+This module provides a client for interacting with OpenAI's GPT API.
+"""
 
 from typing import Optional
 from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 from config import settings, AI_MODELS
-from utils.logger import get_logger
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class OpenAIClient:

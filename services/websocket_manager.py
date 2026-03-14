@@ -32,9 +32,9 @@ import asyncio
 from typing import Dict, Set, Any
 from datetime import datetime
 from fastapi import WebSocket
-from utils.logger import get_logger
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class WebSocketManager:

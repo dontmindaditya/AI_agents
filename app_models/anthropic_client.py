@@ -1,12 +1,15 @@
-"""Anthropic Claude API Client"""
+"""Anthropic Claude API Client
+
+This module provides a client for interacting with Anthropic's Claude API.
+"""
 
 from typing import Optional
 from anthropic import AsyncAnthropic
 from tenacity import retry, stop_after_attempt, wait_exponential
 from config import settings, AI_MODELS
-from utils.logger import get_logger
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class ClaudeClient:

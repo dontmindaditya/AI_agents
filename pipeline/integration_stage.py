@@ -19,10 +19,9 @@ import json
 import re
 from typing import Dict, Any, List
 from database.client import supabase_client
-from utils.logger import get_logger
-from services.websocket_manager import WebSocketManager
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class IntegrationStage:

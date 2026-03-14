@@ -29,10 +29,9 @@ Usage:
 import os
 import aiofiles
 from typing import Dict, List
-from utils.logger import get_logger
-from utils.validator import validate_file_path
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class FileManager:

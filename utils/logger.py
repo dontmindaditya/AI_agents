@@ -1,4 +1,14 @@
-"""Logging configuration"""
+"""Logging configuration
+
+This module provides consistent logging setup for the AgentHub application.
+It supports both JSON and text logging formats based on configuration.
+
+Usage:
+    from utils.logger import setup_logger
+    
+    logger = setup_logger(__name__)
+    logger.info("Application started")
+"""
 
 import logging
 import sys
@@ -9,9 +19,14 @@ from config import settings
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
-    """Custom JSON formatter"""
+    """
+    Custom JSON formatter for structured logging.
     
-    def add_fields(self, log_record, record, message_dict):
+    Adds timestamp, level, and logger name to each log entry.
+    """
+    
+    def add_fields(self, log_record: dict, record: logging.LogRecord, message_dict: dict) -> None:
+        """Add custom fields to log record."""
         super().add_fields(log_record, record, message_dict)
         log_record['timestamp'] = datetime.utcnow().isoformat()
         log_record['level'] = record.levelname
@@ -19,7 +34,15 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
 
 
 def setup_logger(name: Optional[str] = None) -> logging.Logger:
-    """Setup logger"""
+    """
+    Setup and configure a logger instance.
+    
+    Args:
+        name: Logger name, typically __name__ of the module.
+        
+    Returns:
+        Configured logger instance.
+    """
     logger = logging.getLogger(name or __name__)
     
     if logger.handlers:
@@ -42,5 +65,15 @@ def setup_logger(name: Optional[str] = None) -> logging.Logger:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Get logger"""
+    """
+    Get a configured logger instance.
+    
+    This is an alias for setup_logger for backwards compatibility.
+    
+    Args:
+        name: Logger name, typically __name__ of the module.
+        
+    Returns:
+        Configured logger instance.
+    """
     return setup_logger(name)

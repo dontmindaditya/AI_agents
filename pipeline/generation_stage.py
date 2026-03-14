@@ -19,10 +19,9 @@ Usage:
 from typing import Dict, Any, List
 from pipeline.adapters import FrontendAdapter
 from services.code_generator import CodeGenerator
-from utils.logger import get_logger
-from services.websocket_manager import WebSocketManager
+from utils.logger import setup_logger
 
-logger = get_logger(__name__)
+logger = setup_logger(__name__)
 
 
 class GenerationStage:
