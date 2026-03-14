@@ -19,6 +19,7 @@ Usage:
 from typing import Dict, Any, List
 from pipeline.adapters import FrontendAdapter
 from services.code_generator import CodeGenerator
+from services.websocket_manager import WebSocketManager
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)

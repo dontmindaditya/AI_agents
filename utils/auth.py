@@ -142,7 +142,7 @@ def _verify_api_key(token: str) -> User:
     )
 
 
-def require_role(allowed_roles: list[str]) -> callable:
+def require_role(allowed_roles: list[str]):
     """Dependency factory to require specific roles"""
     async def role_checker(user: User = Depends(get_current_user)) -> User:
         if user.role not in allowed_roles:

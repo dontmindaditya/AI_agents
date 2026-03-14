@@ -80,23 +80,6 @@ class WebSocketManager:
         
         logger.info(f"WebSocket connected: {project_id}")
     
-    def disconnect(self, websocket: WebSocket, project_id: str) -> None:
-        """
-        Remove a WebSocket connection.
-        
-        Args:
-            websocket: The WebSocket connection to remove
-            project_id: The project room to disconnect from
-        """
-        await websocket.accept()
-        
-        async with self._lock:
-            if project_id not in self.active_connections:
-                self.active_connections[project_id] = set()
-            self.active_connections[project_id].add(websocket)
-        
-        logger.info(f"✅ WebSocket connected: {project_id}")
-    
     def disconnect(self, websocket: WebSocket, project_id: str):
         """Disconnect WebSocket"""
         if project_id in self.active_connections:

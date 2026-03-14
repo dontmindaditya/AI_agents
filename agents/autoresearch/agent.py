@@ -91,13 +91,13 @@ class AutoResearchAgent(BaseAgent):
         config = inputs.get("config", {})
         
         if operation == "prepare":
-            return await self._prepare_data()
+            return self._prepare_data()
         elif operation == "train":
-            return await self._run_experiment(config, inputs.get("experiment_description", ""))
+            return self._run_experiment(config, inputs.get("experiment_description", ""))
         elif operation == "evaluate":
-            return await self._evaluate()
+            return self._evaluate()
         elif operation == "status":
-            return await self._get_status()
+            return self._get_status()
         else:
             return {
                 "status": "error",

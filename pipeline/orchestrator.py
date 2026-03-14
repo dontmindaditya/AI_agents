@@ -35,6 +35,8 @@ from pipeline.planning_stage import PlanningStage
 from pipeline.analysis_stage import AnalysisStage
 from pipeline.generation_stage import GenerationStage
 from pipeline.integration_stage import IntegrationStage
+from services.websocket_manager import WebSocketManager
+from config import PIPELINE_STAGES
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)

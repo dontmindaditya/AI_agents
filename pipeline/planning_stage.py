@@ -17,6 +17,7 @@ Usage:
 
 from typing import Dict, Any
 from pipeline.adapters import PlanningAdapter
+from services.websocket_manager import WebSocketManager
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)

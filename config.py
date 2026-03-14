@@ -4,7 +4,8 @@ Configuration management for AgentHub
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -79,7 +80,18 @@ class Settings(BaseSettings):
     
     # API Key Authentication
     API_KEY_ENABLED: bool = True
-    API_KEYS: list[str] = []  # List of valid API keys
+    API_KEYS: Union[list[str], str] = []
+    
+    @field_validator('API_KEYS', mode='before')
+    @classmethod
+    def parse_api_keys(cls, v):
+        """Parse API_KEYS from string or list"""
+        if isinstance(v, str):
+            if v.startswith('['):
+                import json
+                return json.loads(v)
+            return [k.strip() for k in v.split(',') if k.strip()]
+        return v
     
     class Config:
         # Check both backend/.env and parent directory .env
