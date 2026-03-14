@@ -1,4 +1,32 @@
-"""Pipeline Orchestrator"""
+"""
+Pipeline Orchestrator
+
+This module is the main coordinator for executing multi-stage AI pipelines.
+It orchestrates the flow between planning, analysis, generation, and integration stages,
+providing real-time updates via WebSocket connections.
+
+Pipeline Stages:
+    1. Planning - Creates project structure and task allocation
+    2. Analysis - Analyzes requirements and design
+    3. Generation - Generates frontend/backend code
+    4. Integration - Integrates agents and finalizes project
+
+Usage:
+    from pipeline.orchestrator import PipelineOrchestrator
+    from services.websocket_manager import WebSocketManager
+    
+    ws_manager = WebSocketManager()
+    orchestrator = PipelineOrchestrator(ws_manager)
+    
+    # Execute a full pipeline
+    await orchestrator.execute_pipeline(
+        project_id="my-project",
+        project_data={"name": "Todo App", "framework": "react"}
+    )
+    
+    # Get status
+    status = await orchestrator.get_pipeline_status("my-project")
+"""
 
 import asyncio
 from typing import Dict, Any, Optional
@@ -15,9 +43,30 @@ logger = get_logger(__name__)
 
 
 class PipelineOrchestrator:
-    """Main pipeline coordinator"""
+    """
+    Main pipeline coordinator that manages the execution of multi-stage AI pipelines.
+    
+    This class coordinates the flow between different pipeline stages and maintains
+    the state of all active pipelines. It also provides real-time updates via
+    WebSocket connections.
+    
+    Attributes:
+        ws_manager: WebSocket manager for real-time updates
+        active_pipelines: Dictionary of running pipelines by project_id
+        stages: Dictionary of pipeline stage instances
+    
+    Example:
+        >>> orchestrator = PipelineOrchestrator(ws_manager)
+        >>> await orchestrator.execute_pipeline("project-1", {"name": "My App"})
+    """
     
     def __init__(self, websocket_manager: WebSocketManager):
+        """
+        Initialize the pipeline orchestrator.
+        
+        Args:
+            websocket_manager: WebSocket manager instance for real-time communication
+        """
         self.ws_manager: WebSocketManager = websocket_manager
         self.active_pipelines: Dict[str, Dict[str, Any]] = {}
         
@@ -28,10 +77,23 @@ class PipelineOrchestrator:
             "integration": IntegrationStage(websocket_manager),
         }
         
-        logger.info("🎭 Pipeline Orchestrator initialized")
+        logger.info("Pipeline Orchestrator initialized")
     
-    async def execute_pipeline(self, project_id: str, project_data: Dict[str, Any]):
-        """Execute full pipeline"""
+    async def execute_pipeline(self, project_id: str, project_data: Dict[str, Any]) -> None:
+        """
+        Execute full pipeline for a project.
+        
+        Args:
+            project_id: Unique identifier for the project
+            project_data: Dictionary containing project configuration
+                - name: Project name
+                - type: Project type (web, mobile, etc.)
+                - framework: Target framework
+                - description: Project description
+                
+        Raises:
+            Exception: If any stage fails, the pipeline stops and logs the error
+        """
         try:
             logger.info(f"🚀 Starting pipeline: {project_id}")
             

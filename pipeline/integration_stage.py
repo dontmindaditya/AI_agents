@@ -1,4 +1,19 @@
-"""Integration Stage"""
+"""
+Integration Stage
+
+This final stage integrates AI agents into the generated project and finalizes
+the output. It:
+- Fetches selected agents for the project from the database
+- Integrates agents into the project files
+- Validates the final output
+- Sends completion notification via WebSocket
+
+The integration stage is the last stage in the pipeline.
+
+Usage:
+    stage = IntegrationStage(ws_manager)
+    result = await stage.execute("project-123", context)
+"""
 
 import json
 import re
@@ -9,14 +24,43 @@ from services.websocket_manager import WebSocketManager
 
 logger = get_logger(__name__)
 
+
 class IntegrationStage:
-    """Agent Integration Stage"""
+    """
+    Integration stage that adds AI agents to the generated project.
+    
+    This stage fetches project-specific agents from the database and
+    integrates them into the generated code. It also validates the
+    final output and sends completion notifications.
+    
+    Attributes:
+        ws_manager: WebSocket manager for real-time updates
+    """
     
     def __init__(self, websocket_manager: WebSocketManager):
+        """
+        Initialize the integration stage.
+        
+        Args:
+            websocket_manager: WebSocket manager for sending updates
+        """
         self.ws_manager = websocket_manager
     
     async def execute(self, project_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute integration"""
+        """
+        Execute the integration stage for a project.
+        
+        Args:
+            project_id: Unique project identifier
+            context: Pipeline context containing:
+                - all_files: List of generated files
+                - project_data: Project configuration
+                
+        Returns:
+            Dictionary containing:
+                - integrated_agents: Number of agents integrated
+                - files: Updated file list
+        """
         try:
             # 1. Fetch selected agents for the project
             project_agents = self._fetch_project_agents(project_id)

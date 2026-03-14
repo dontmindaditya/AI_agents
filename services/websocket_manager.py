@@ -1,4 +1,32 @@
-"""WebSocket Manager"""
+"""
+WebSocket Manager
+
+This module provides WebSocket connection management for real-time communication
+between the server and clients. It supports:
+- Multiple concurrent connections per project
+- Broadcasting messages to all clients in a project
+- Thread-safe connection handling with asyncio locks
+- Various message types (agent updates, stage updates, file creation, errors, completion)
+
+Usage:
+    from services.websocket_manager import WebSocketManager
+    
+    ws_manager = WebSocketManager()
+    
+    # In FastAPI websocket endpoint
+    @app.websocket("/ws/{project_id}")
+    async def websocket_endpoint(websocket: WebSocket, project_id: str):
+        await ws_manager.connect(websocket, project_id)
+        try:
+            while True:
+                data = await websocket.receive_json()
+        finally:
+            ws_manager.disconnect(websocket, project_id)
+    
+    # Send updates to clients
+    await ws_manager.send_stage_update(project_id, {"stage": "planning", "status": "completed"})
+    await ws_manager.send_completion(project_id, {"status": "completed", "files": [...]})
+"""
 
 import asyncio
 from typing import Dict, Set, Any
@@ -10,14 +38,56 @@ logger = get_logger(__name__)
 
 
 class WebSocketManager:
-    """Manages WebSocket connections"""
+    """
+    Manages WebSocket connections for real-time project updates.
+    
+    This class handles WebSocket connections organized by project_id,
+    allowing broadcasting to specific projects. It uses asyncio locks
+    for thread-safe operations.
+    
+    Attributes:
+        active_connections: Dictionary mapping project_id to set of WebSocket connections
+        _lock: Asyncio lock for thread-safe operations
+    
+    Example:
+        >>> manager = WebSocketManager()
+        >>> await manager.connect(websocket, "project-1")
+        >>> await manager.send_stage_update("project-1", {"stage": "generation"})
+        >>> manager.disconnect(websocket, "project-1")
+    """
     
     def __init__(self):
+        """
+        Initialize the WebSocket manager.
+        """
         self.active_connections: Dict[str, Set[WebSocket]] = {}
         self._lock = asyncio.Lock()
     
-    async def connect(self, websocket: WebSocket, project_id: str):
-        """Connect WebSocket"""
+    async def connect(self, websocket: WebSocket, project_id: str) -> None:
+        """
+        Accept and register a new WebSocket connection.
+        
+        Args:
+            websocket: The WebSocket connection to register
+            project_id: Unique identifier for the project room
+        """
+        await websocket.accept()
+        
+        async with self._lock:
+            if project_id not in self.active_connections:
+                self.active_connections[project_id] = set()
+            self.active_connections[project_id].add(websocket)
+        
+        logger.info(f"WebSocket connected: {project_id}")
+    
+    def disconnect(self, websocket: WebSocket, project_id: str) -> None:
+        """
+        Remove a WebSocket connection.
+        
+        Args:
+            websocket: The WebSocket connection to remove
+            project_id: The project room to disconnect from
+        """
         await websocket.accept()
         
         async with self._lock:

@@ -1,4 +1,30 @@
-"""File management utilities"""
+"""
+File management utilities
+
+This module provides asynchronous file operations for managing generated
+project files. It supports:
+- Writing files to disk with path validation
+- Reading files asynchronously
+- Batch file operations
+- Project directory management
+
+Usage:
+    from services.file_manager import FileManager
+    
+    manager = FileManager("/tmp/projects")
+    
+    # Write a single file
+    await manager.write_file("my-project", "src/App.tsx", "export default function() {}")
+    
+    # Write multiple files
+    await manager.write_multiple_files("my-project", [
+        {"path": "src/index.tsx", "content": "..."},
+        {"path": "src/App.tsx", "content": "..."}
+    ])
+    
+    # Read a file
+    content = await manager.read_file("my-project", "src/App.tsx")
+"""
 
 import os
 import aiofiles
@@ -10,14 +36,43 @@ logger = get_logger(__name__)
 
 
 class FileManager:
-    """File operations manager"""
+    """
+    File operations manager for generated projects.
     
-    def __init__(self, base_path: str = "/tmp/webby"):
+    This class provides async methods for reading and writing files
+    with built-in path validation for security.
+    
+    Attributes:
+        base_path: Base directory for all project files
+        
+    Example:
+        >>> manager = FileManager("/tmp/myapp")
+        >>> await manager.write_file("project-1", "README.md", "# My Project")
+        >>> content = await manager.read_file("project-1", "README.md")
+    """
+    
+    def __init__(self, base_path: str = "/tmp/agenthub"):
+        """
+        Initialize the file manager.
+        
+        Args:
+            base_path: Base directory path for storing project files
+        """
         self.base_path = base_path
         os.makedirs(base_path, exist_ok=True)
     
     async def write_file(self, project_id: str, file_path: str, content: str) -> bool:
-        """Write file to disk"""
+        """
+        Write a file to disk.
+        
+        Args:
+            project_id: Unique project identifier
+            file_path: Relative path within the project
+            content: File content to write
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             # Validate path
             is_valid, error = validate_file_path(file_path)

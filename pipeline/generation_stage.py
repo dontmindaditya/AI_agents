@@ -1,4 +1,20 @@
-"""Generation Stage"""
+"""
+Generation Stage
+
+This stage generates the actual code for the project based on the plan created
+in the planning stage. It uses the FrontendAdapter to invoke the frontend agent
+which generates:
+- React/Vue/Angular components
+- Styling (CSS/Tailwind)
+- Configuration files
+- Supporting utilities
+
+The generation stage runs after planning and analysis complete.
+
+Usage:
+    stage = GenerationStage(ws_manager)
+    result = await stage.execute("project-123", context)
+"""
 
 from typing import Dict, Any, List
 from pipeline.adapters import FrontendAdapter
@@ -10,14 +26,43 @@ logger = get_logger(__name__)
 
 
 class GenerationStage:
-    """Generation stage"""
+    """
+    Generation stage that produces project code files.
+    
+    This stage takes the project plan and generates actual code files including
+    components, styles, and configuration. It supports multiple frameworks
+    and uses AI agents for intelligent code generation.
+    
+    Attributes:
+        ws_manager: WebSocket manager for real-time updates
+        frontend_adapter: FrontendAdapter for code generation
+    """
     
     def __init__(self, websocket_manager: WebSocketManager):
+        """
+        Initialize the generation stage.
+        
+        Args:
+            websocket_manager: WebSocket manager for sending updates
+        """
         self.ws_manager = websocket_manager
         self.frontend_adapter = FrontendAdapter()
     
     async def execute(self, project_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute generation"""
+        """
+        Execute the generation stage for a project.
+        
+        Args:
+            project_id: Unique project identifier
+            context: Pipeline context containing:
+                - project_data: Project configuration
+                    - description: Project description
+                    - framework: Target framework (react, vue, etc.)
+                    - design_preferences: UI/UX preferences
+                    
+        Returns:
+            Dictionary containing generated files and status
+        """
         try:
             project_data = context["project_data"]
             description = project_data.get("description", "website")

@@ -1,4 +1,15 @@
-"""Analysis Stage"""
+"""
+Analysis Stage
+
+This stage analyzes the project requirements and design specifications.
+It creates a design system and validates the project structure.
+
+The analysis stage runs after planning and before generation.
+
+Usage:
+    stage = AnalysisStage(ws_manager)
+    result = await stage.execute("project-123", context)
+"""
 
 import sys
 import os
@@ -14,13 +25,36 @@ logger = get_logger(__name__)
 
 
 class AnalysisStage:
-    """Analysis stage"""
+    """
+    Analysis stage that evaluates project requirements and design.
+    
+    This stage analyzes the project plan and creates a design system with
+    colors, typography, spacing, and component specifications.
+    
+    Attributes:
+        ws_manager: WebSocket manager for real-time updates
+    """
     
     def __init__(self, websocket_manager: WebSocketManager):
+        """
+        Initialize the analysis stage.
+        
+        Args:
+            websocket_manager: WebSocket manager for sending updates
+        """
         self.ws_manager = websocket_manager
     
     async def execute(self, project_id: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute analysis"""
+        """
+        Execute the analysis stage for a project.
+        
+        Args:
+            project_id: Unique project identifier
+            context: Pipeline context containing project data
+                
+        Returns:
+            Dictionary containing design system and analysis results
+        """
         try:
             project_data = context["project_data"]
             

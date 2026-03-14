@@ -1,7 +1,32 @@
 """
 Authentication module using Supabase JWT verification.
+
+This module provides authentication and authorization utilities for the AgentHub API.
+It supports multiple authentication methods:
+1. Supabase JWT tokens (via Authorization header)
+2. API Key authentication (via X-API-Key header)
+
+Usage:
+    # For JWT authentication
+    from utils.auth import get_current_user
+    
+    @app.get("/protected")
+    async def protected_route(user: User = Depends(get_current_user)):
+        return {"user": user}
+    
+    # For API Key authentication
+    from utils.auth import verify_api_key
+    
+    @app.post("/agent/execute")
+    async def execute_agent(user: User = Depends(verify_api_key)):
+        return {"user": user}
+
+Environment Variables:
+    - API_KEY_ENABLED: Enable/disable API key authentication (default: True)
+    - API_KEYS: Comma-separated list of valid API keys
 """
-from typing import Optional, Dict, Any
+
+from typing import Optional, Dict, Any, Callable
 from fastapi import Depends, HTTPException, status, Request, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
 from jose import jwt, JWTError
@@ -14,10 +39,19 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 class User(BaseModel):
-    """Authenticated user model"""
+    """
+    Authenticated user model.
+    
+    Attributes:
+        id: Unique user identifier
+        email: User's email address
+        role: User's role (admin, developer, api_user, etc.)
+        metadata: Additional user information
+    """
     id: str
     email: Optional[str] = None
     role: Optional[str] = None
+    metadata: Dict[str, Any] = {}
     metadata: Dict[str, Any] = {}
 
 

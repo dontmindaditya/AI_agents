@@ -1,6 +1,36 @@
 """
-API endpoint to list and run all available agents
+API endpoint to list and run all available agents.
+
+This module provides REST API endpoints for:
+- Listing all available agents in the registry
+- Getting details about a specific agent
+- Running an agent with provided inputs
+- Executing dynamic pipelines of agents
+
+All endpoints require API key authentication via X-API-Key header.
+
+Usage:
+    # List all agents
+    GET /api/agents/list
+    
+    # Get agent details
+    GET /api/agents/{agent_id}
+    
+    # Run an agent
+    POST /api/agents/{agent_id}/run
+    {
+        "inputs": {"task": "build a todo app"},
+        "context": {}
+    }
+    
+    # Run a pipeline
+    POST /api/pipelines/run
+    {
+        "name": "My Pipeline",
+        "steps": [{"agent_id": "frontend", "inputs": {...}}]
+    }
 """
+
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field, field_validator
@@ -15,6 +45,13 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 class AgentRunRequest(BaseModel):
+    """
+    Request model for running an agent.
+    
+    Attributes:
+        inputs: Dictionary of input parameters for the agent
+        context: Optional shared context from pipeline/environment
+    """
     inputs: Dict[str, Any] = Field(..., min_length=1)
     context: Optional[Dict[str, Any]] = None
     
