@@ -61,6 +61,42 @@ def validation_exception_handler(request: Request, exc: ValidationError):
     )
 
 
+def generic_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected exceptions"""
+    error_id = id(exc)
+    logger.error(f"Unhandled exception {error_id}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_id": str(error_id),
+            "message": "An unexpected error occurred. Please try again later."
+        }
+    )
+
+
+def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "message": getattr(exc, "msg", "HTTP error occurred")
+        }
+    )
+
+
+def value_error_handler(request: Request, exc: ValueError):
+    """Handle ValueError exceptions"""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "detail": str(exc),
+            "message": "Invalid input value"
+        }
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager"""
@@ -85,6 +121,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_exception_handler(ValidationError, validation_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(ValueError, value_error_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 app.include_router(marketplace.router)
 app.include_router(agent_management.router)
@@ -231,8 +270,17 @@ async def execute_pipeline(
     background_tasks: BackgroundTasks,
     user: dict = Depends(get_current_user)
 ):
+    """
+    Execute a pipeline for project generation.
+    
+    Args:
+        pipeline_request: Pipeline configuration including project details.
+        
+    Returns:
+        Status message indicating pipeline has started.
+    """
     try:
-        logger.info(f"🎯 Starting pipeline: {pipeline_request.project_id}")
+        logger.info(f"Starting pipeline: {pipeline_request.project_id}")
         
         background_tasks.add_task(
             orchestrator.execute_pipeline,
@@ -250,11 +298,17 @@ async def execute_pipeline(
         return {
             "status": "started",
             "project_id": pipeline_request.project_id,
-            "message": "Pipeline started"
+            "message": "Pipeline started successfully"
         }
+    except ValueError as e:
+        logger.error(f"Pipeline validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"❌ Pipeline failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Pipeline execution error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to start pipeline. Please try again later."
+        )
 
 
 @app.get("/api/pipeline/status/{project_id}")
@@ -264,11 +318,26 @@ async def get_pipeline_status(
     project_id: str,
     user: dict = Depends(get_current_user)
 ):
+    """
+    Get the status of a pipeline.
+    
+    Args:
+        project_id: ID of the project to check status for.
+        
+    Returns:
+        Pipeline status information.
+    """
     try:
         status = await orchestrator.get_pipeline_status(project_id)
         return status
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get pipeline status: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve pipeline status. Please try again later."
+        )
 
 
 @app.post("/api/pipeline/cancel/{project_id}")
@@ -278,11 +347,24 @@ async def cancel_pipeline(
     project_id: str,
     user: dict = Depends(get_current_user)
 ):
+    """
+    Cancel a running pipeline.
+    
+    Args:
+        project_id: ID of the project to cancel.
+        
+    Returns:
+        Cancellation confirmation.
+    """
     try:
         await orchestrator.cancel_pipeline(project_id)
-        return {"status": "cancelled", "project_id": project_id}
+        return {"status": "cancelled", "project_id": project_id, "message": "Pipeline cancelled successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to cancel pipeline: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to cancel pipeline. Please try again later."
+        )
 
 
 @app.post("/api/agents/execute")
@@ -293,8 +375,17 @@ async def execute_agent(
     background_tasks: BackgroundTasks,
     user: dict = Depends(verify_api_key)
 ):
+    """
+    Execute a single agent.
+    
+    Args:
+        agent_request: Agent execution request including agent type and task description.
+        
+    Returns:
+        Status message indicating agent execution has started.
+    """
     try:
-        logger.info(f"🤖 Executing {agent_request.agent_type}: {agent_request.project_id}")
+        logger.info(f"Executing agent: {agent_request.agent_type} for project: {agent_request.project_id}")
         
         background_tasks.add_task(
             orchestrator.execute_agent,
@@ -306,10 +397,19 @@ async def execute_agent(
         
         return {
             "status": "started",
-            "agent_type": agent_request.agent_type
+            "agent_type": agent_request.agent_type,
+            "project_id": agent_request.project_id,
+            "message": f"Agent '{agent_request.agent_type}' started successfully"
         }
+    except ValueError as e:
+        logger.error(f"Agent validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Agent execution error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to execute agent. Please try again later."
+        )
 
 
 if __name__ == "__main__":

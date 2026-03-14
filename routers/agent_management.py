@@ -17,30 +17,74 @@ logger = setup_logger(__name__)
 router = APIRouter(tags=["agent-management"])
 limiter = Limiter(key_func=get_remote_address)
 
+# Error messages
+ERROR_MESSAGES = {
+    "create_failed": "Failed to create agent. Please check the input data and try again.",
+    "update_failed": "Failed to update agent. Please check the input data and try again.",
+    "not_found": "The requested resource was not found.",
+    "list_failed": "Failed to retrieve data. Please try again later.",
+    "install_failed": "Failed to install agent. Please try again.",
+    "uninstall_failed": "Failed to uninstall agent. Please try again.",
+    "refresh_failed": "Failed to refresh agents. Please try again.",
+    "database_error": "Database operation failed. Please try again later.",
+}
+
+
 # --- Admin Endpoints ---
 
 @router.post("/api/admin/agents", response_model=AgentDetail)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def create_agent(request: Request, agent: AgentCreateRequest):
-    """Create a new agent (Admin)"""
+    """
+    Create a new agent (Admin only).
+    
+    Args:
+        agent: Agent creation request with agent details.
+        
+    Returns:
+        Created agent details.
+        
+    Raises:
+        HTTPException 400: If the input data is invalid.
+        HTTPException 500: If creation fails.
+    """
     try:
         data = agent.model_dump(exclude_none=True)
-        # Verify category exists
-        # Basic validation handled by Pydantic types, but DB will enforce FK.
         
         result = supabase_client.service_client.table("agent_catalog").insert(data).execute()
         if not result.data:
-            raise HTTPException(status_code=400, detail="Failed to create agent")
+            raise HTTPException(
+                status_code=400,
+                detail=ERROR_MESSAGES["create_failed"]
+            )
             
         return result.data[0]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to create agent: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=ERROR_MESSAGES["database_error"]
+        )
 
 @router.put("/api/admin/agents/{agent_id}", response_model=AgentDetail)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def update_agent(request: Request, agent_id: UUID, update: AgentUpdateRequest):
-    """Update an existing agent (Admin)"""
+    """
+    Update an existing agent (Admin only).
+    
+    Args:
+        agent_id: UUID of the agent to update.
+        update: Update request with new values.
+        
+    Returns:
+        Updated agent details.
+        
+    Raises:
+        HTTPException 404: If agent is not found.
+        HTTPException 500: If update fails.
+    """
     try:
         data = update.model_dump(exclude_none=True)
         
@@ -50,21 +94,39 @@ async def update_agent(request: Request, agent_id: UUID, update: AgentUpdateRequ
             .execute()
             
         if not result.data:
-            raise HTTPException(status_code=404, detail="Agent not found")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Agent with ID '{agent_id}' not found"
+            )
             
         return result.data[0]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to update agent: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=ERROR_MESSAGES["database_error"]
+        )
 
 # --- Project Management Endpoints ---
 
 @router.get("/api/projects/{project_id}/agents", response_model=List[ProjectAgentResponse])
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def list_project_agents(request: Request, project_id: str):
-    """List agents installed in a project"""
+    """
+    List agents installed in a project.
+    
+    Args:
+        project_id: ID of the project.
+        
+    Returns:
+        List of installed agents with their configuration.
+        
+    Raises:
+        HTTPException 500: If retrieval fails.
+    """
     try:
-        # Join with agent_catalog to get basic info
         result = supabase_client.client.table("project_agents")\
             .select("*, agent:agent_catalog(*)")\
             .eq("project_id", project_id)\
@@ -73,7 +135,10 @@ async def list_project_agents(request: Request, project_id: str):
         return result.data
     except Exception as e:
         logger.error(f"Failed to list project agents: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=ERROR_MESSAGES["list_failed"]
+        )
 
 @router.post("/api/projects/{project_id}/agents", response_model=ProjectAgentResponse)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
@@ -107,7 +172,10 @@ async def install_agent(
         raise
     except Exception as e:
         logger.error(f"Failed to install agent: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=ERROR_MESSAGES["install_failed"]
+        )
 
 @router.patch("/api/projects/{project_id}/agents/{agent_id}", response_model=ProjectAgentResponse)
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
@@ -117,18 +185,22 @@ async def update_project_agent(
     agent_id: UUID,
     update: ProjectAgentUpdateRequest
 ):
-    """Update project agent configuration or status"""
-    try:
-        # We need to find the project_agent record by project_id and agent_id (which is the catalog id)
-        # OR the path param agent_id is the project_agent row id? 
-        # API design says ":agent_id". Usually in UI we might have the catalog ID. 
-        # But for REST resource /agents/{id}, {id} handles the resource. 
-        # Let's assume the path param is the *catalog* agent ID for consistency with "install", 
-        # OR we query by project_agent.id. 
-        # The user request said "PATCH /api/projects/:projectId/agents/:agentId". 
-        # Usually :agentId here refers to the installed instance ID or the catalog ID. 
-        # I'll support looking up by project_id + agent_id (catalog ID) to make frontend life easier (don't need to track the relationship ID).
+    """
+    Update project agent configuration or status.
+    
+    Args:
+        project_id: ID of the project.
+        agent_id: UUID of the agent to update.
+        update: Update request with new configuration.
         
+    Returns:
+        Updated project agent details.
+        
+    Raises:
+        HTTPException 404: If agent installation not found.
+        HTTPException 500: If update fails.
+    """
+    try:
         query = supabase_client.client.table("project_agents")\
             .update(update.model_dump(exclude_none=True))\
             .eq("project_id", project_id)\
@@ -138,17 +210,37 @@ async def update_project_agent(
         result = query.execute()
         
         if not result.data:
-            raise HTTPException(status_code=404, detail="Agent installation not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Agent installation not found in this project"
+            )
             
         return result.data[0]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to update project agent: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=ERROR_MESSAGES["update_failed"]
+        )
 
 @router.delete("/api/projects/{project_id}/agents/{agent_id}")
 @limiter.limit(settings.RATE_LIMIT_DEFAULT)
 async def uninstall_agent(request: Request, project_id: str, agent_id: UUID):
-    """Uninstall an agent from a project"""
+    """
+    Uninstall an agent from a project.
+    
+    Args:
+        project_id: ID of the project.
+        agent_id: UUID of the agent to uninstall.
+        
+    Returns:
+        Success message.
+        
+    Raises:
+        HTTPException 500: If uninstall fails.
+    """
     try:
         result = supabase_client.client.table("project_agents")\
             .delete()\
@@ -156,10 +248,13 @@ async def uninstall_agent(request: Request, project_id: str, agent_id: UUID):
             .eq("agent_id", str(agent_id))\
             .execute()
             
-        return {"status": "success", "message": "Agent uninstalled"}
+        return {"status": "success", "message": "Agent uninstalled successfully"}
     except Exception as e:
         logger.error(f"Failed to uninstall agent: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=ERROR_MESSAGES["uninstall_failed"]
+        )
 
 @router.post("/api/projects/{project_id}/refresh-agents")
 @limiter.limit(settings.RATE_LIMIT_PIPELINE)
