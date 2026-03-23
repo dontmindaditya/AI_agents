@@ -24,6 +24,7 @@ from utils.auth import get_current_user, verify_api_key
 from pipeline.orchestrator import PipelineOrchestrator
 from services.websocket_manager import WebSocketManager
 from routers import marketplace, agent_management, agents
+from dependencies import init_services, get_ws_manager, get_orchestrator, get_optional_orchestrator
 
 logger = setup_logger(__name__)
 ws_manager = WebSocketManager()
@@ -99,12 +100,15 @@ def value_error_handler(request: Request, exc: ValueError):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager"""
+    """Lifespan context manager - initializes and cleans up services."""
     global orchestrator
     
     logger.info(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     orchestrator = PipelineOrchestrator(ws_manager)
     app.state.orchestrator = orchestrator
+    
+    init_services(ws_manager, orchestrator)
+    logger.info("Services initialized via dependency injection")
     
     yield
     
@@ -226,21 +230,29 @@ async def root(request: Request):
 
 @app.get("/health")
 @limiter.limit(settings.RATE_LIMIT_HEALTH)
-async def health(request: Request):
+async def health(
+    request: Request,
+    ws_mgr = Depends(get_ws_manager),
+    orch = Depends(get_optional_orchestrator)
+):
     return {
         "status": "healthy",
-        "active_connections": len(ws_manager.active_connections),
-        "active_pipelines": orchestrator.get_active_pipeline_count() if orchestrator else 0
+        "active_connections": len(ws_mgr.active_connections),
+        "active_pipelines": orch.get_active_pipeline_count() if orch else 0
     }
 
 
 @app.websocket("/ws/{project_id}")
 @limiter.limit(settings.RATE_LIMIT_WS)
-async def websocket_endpoint(websocket: WebSocket, project_id: str):
-    await ws_manager.connect(websocket, project_id)
+async def websocket_endpoint(
+    websocket: WebSocket,
+    project_id: str,
+    ws_mgr = Depends(get_ws_manager)
+):
+    await ws_mgr.connect(websocket, project_id)
     
     try:
-        await ws_manager.send_personal_message(
+        await ws_mgr.send_personal_message(
             {"type": "connected", "data": {"project_id": project_id}},
             websocket
         )
@@ -249,7 +261,7 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
             try:
                 data = await websocket.receive_json()
                 if data.get("type") == "ping":
-                    await ws_manager.send_personal_message(
+                    await ws_mgr.send_personal_message(
                         {"type": "pong", "data": {}},
                         websocket
                     )
@@ -259,7 +271,7 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
                 logger.error(f"WebSocket error: {e}")
                 break
     finally:
-        ws_manager.disconnect(websocket, project_id)
+        ws_mgr.disconnect(websocket, project_id)
 
 
 @app.post("/api/pipeline/execute")
@@ -268,7 +280,8 @@ async def execute_pipeline(
     request: Request,
     pipeline_request: PipelineExecuteRequest, 
     background_tasks: BackgroundTasks,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
+    orch = Depends(get_orchestrator)
 ):
     """
     Execute a pipeline for project generation.
@@ -283,7 +296,7 @@ async def execute_pipeline(
         logger.info(f"Starting pipeline: {pipeline_request.project_id}")
         
         background_tasks.add_task(
-            orchestrator.execute_pipeline,
+            orch.execute_pipeline,
             project_id=pipeline_request.project_id,
             project_data={
                 "name": pipeline_request.project_name,
