@@ -4,6 +4,7 @@ AgentHub - FastAPI Application
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Dict
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, Depends, Request
@@ -230,16 +231,62 @@ async def root(request: Request):
 
 @app.get("/health")
 @limiter.limit(settings.RATE_LIMIT_HEALTH)
-async def health(
-    request: Request,
-    ws_mgr = Depends(get_ws_manager),
-    orch = Depends(get_optional_orchestrator)
-):
-    return {
-        "status": "healthy",
-        "active_connections": len(ws_mgr.active_connections),
-        "active_pipelines": orch.get_active_pipeline_count() if orch else 0
-    }
+async def health(request: Request):
+    """Simple health check endpoint."""
+    from services.health import get_simple_health
+    return await get_simple_health()
+
+
+@app.get("/health/detailed")
+@limiter.limit(settings.RATE_LIMIT_HEALTH)
+async def health_detailed(request: Request):
+    """
+    Detailed health check with component status.
+    
+    Returns:
+        - Overall status
+        - Per-component health (database, AI APIs, websocket, system)
+        - Latency for each check
+    """
+    from services.health import get_health_status
+    return await get_health_status()
+
+
+@app.get("/health/ready")
+async def health_ready(request: Request):
+    """
+    Readiness probe for Kubernetes/container orchestration.
+    
+    Returns 200 if the service is ready to accept traffic.
+    Returns 503 if critical components are unhealthy.
+    """
+    from services.health import HealthChecker, HealthStatus
+    checker = HealthChecker()
+    report = await checker.check_all()
+    
+    if report.overall_status == HealthStatus.UNHEALTHY:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "reason": "Critical components unhealthy",
+                "details": report.to_dict(),
+            }
+        )
+    
+    return {"status": "ready"}
+
+
+@app.get("/health/live")
+async def health_live(request: Request):
+    """
+    Liveness probe for Kubernetes/container orchestration.
+    
+    Returns 200 if the service process is alive.
+    This is a lightweight check that doesn't verify external dependencies.
+    """
+    return {"status": "alive", "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.websocket("/ws/{project_id}")
