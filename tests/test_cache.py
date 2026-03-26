@@ -306,23 +306,29 @@ class TestCachedAgentRegistry:
     @pytest.mark.asyncio
     async def test_force_refresh(self):
         """Test force_refresh bypasses cache."""
-        from services.cache import get_cached_registry, cache
+        from services.cache import MemoryCache, CachedAgentRegistry
         
-        await cache.clear()
+        # Create a fresh cache for this test
+        test_cache = MemoryCache()
         
         mock_registry = MagicMock()
         mock_registry.get_all_agents.side_effect = [
-            [{"name": "Agent1"}],
-            [{"name": "Agent2"}]
+            [{"Name": "Agent1"}],
+            [{"Name": "Agent2"}]
         ]
         
-        cached_registry = get_cached_registry(mock_registry)
+        cached_registry = CachedAgentRegistry(mock_registry)
+        cached_registry._cache = test_cache
         
         result1 = await cached_registry.get_all_agents()
+        
+        # Clear the cache
+        await test_cache.clear()
+        
         result2 = await cached_registry.get_all_agents(force_refresh=True)
         
-        assert result1 == [{"name": "Agent1"}]
-        assert result2 == [{"name": "Agent2"}]
+        assert result1 == [{"Name": "Agent1"}]
+        assert result2 == [{"Name": "Agent2"}]
         assert mock_registry.get_all_agents.call_count == 2
 
 
