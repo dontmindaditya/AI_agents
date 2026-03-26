@@ -26,6 +26,8 @@ import httpx
 from config import settings
 from utils.logger import setup_logger
 
+from services.connection_pool import HTTPConnectionPool, get_http_client
+
 logger = setup_logger(__name__)
 
 
@@ -89,6 +91,13 @@ class HealthChecker:
     
     def __init__(self):
         self.timeout = 5.0
+        self._http_pool: Optional[HTTPConnectionPool] = None
+    
+    async def _get_http_pool(self) -> HTTPConnectionPool:
+        """Get or create the HTTP connection pool."""
+        if self._http_pool is None:
+            self._http_pool = await get_http_client()
+        return self._http_pool
     
     async def check_all(self) -> HealthReport:
         """Run all health checks and return comprehensive report."""
@@ -134,33 +143,33 @@ class HealthChecker:
                     message="Supabase URL not configured",
                 )
             
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(
-                    f"{settings.SUPABASE_URL}/rest/v1/",
-                    headers={
-                        "apikey": settings.SUPABASE_KEY or "",
-                        "Authorization": f"Bearer {settings.SUPABASE_KEY or ''}"
-                    }
+            http_pool = await self._get_http_pool()
+            response = await http_pool.get(
+                f"{settings.SUPABASE_URL}/rest/v1/",
+                headers={
+                    "apikey": settings.SUPABASE_KEY or "",
+                    "Authorization": f"Bearer {settings.SUPABASE_KEY or ''}"
+                }
+            )
+            
+            latency = (time.time() - start) * 1000
+            
+            if response.status_code in (200, 201):
+                return ComponentHealth(
+                    name="database",
+                    status=HealthStatus.HEALTHY,
+                    latency_ms=round(latency, 2),
+                    message="Database connection successful",
+                )
+            else:
+                return ComponentHealth(
+                    name="database",
+                    status=HealthStatus.DEGRADED,
+                    latency_ms=round(latency, 2),
+                    message=f"Database returned status {response.status_code}",
                 )
                 
-                latency = (time.time() - start) * 1000
-                
-                if response.status_code in (200, 201):
-                    return ComponentHealth(
-                        name="database",
-                        status=HealthStatus.HEALTHY,
-                        latency_ms=round(latency, 2),
-                        message="Database connection successful",
-                    )
-                else:
-                    return ComponentHealth(
-                        name="database",
-                        status=HealthStatus.DEGRADED,
-                        latency_ms=round(latency, 2),
-                        message=f"Database returned status {response.status_code}",
-                    )
-                    
-        except asyncio.TimeoutError:
+        except httpx.TimeoutException:
             return ComponentHealth(
                 name="database",
                 status=HealthStatus.UNHEALTHY,
@@ -187,46 +196,46 @@ class HealthChecker:
             )
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": settings.ANTHROPIC_API_KEY,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": settings.CLAUDE_MODEL,
-                        "max_tokens": 1,
-                        "messages": [{"role": "user", "content": "ping"}]
-                    }
+            http_pool = await self._get_http_pool()
+            response = await http_pool.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": settings.ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": settings.CLAUDE_MODEL,
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "ping"}]
+                }
+            )
+            
+            latency = (time.time() - start) * 1000
+            
+            if response.status_code in (200, 201):
+                return ComponentHealth(
+                    name="anthropic",
+                    status=HealthStatus.HEALTHY,
+                    latency_ms=round(latency, 2),
+                    message=f"API responding with {settings.CLAUDE_MODEL}",
                 )
-                
-                latency = (time.time() - start) * 1000
-                
-                if response.status_code in (200, 201):
-                    return ComponentHealth(
-                        name="anthropic",
-                        status=HealthStatus.HEALTHY,
-                        latency_ms=round(latency, 2),
-                        message=f"API responding with {settings.CLAUDE_MODEL}",
-                    )
-                elif response.status_code == 401:
-                    return ComponentHealth(
-                        name="anthropic",
-                        status=HealthStatus.UNHEALTHY,
-                        latency_ms=round(latency, 2),
-                        message="Invalid API key",
-                    )
-                else:
-                    return ComponentHealth(
-                        name="anthropic",
-                        status=HealthStatus.DEGRADED,
-                        latency_ms=round(latency, 2),
-                        message=f"API returned status {response.status_code}",
-                    )
+            elif response.status_code == 401:
+                return ComponentHealth(
+                    name="anthropic",
+                    status=HealthStatus.UNHEALTHY,
+                    latency_ms=round(latency, 2),
+                    message="Invalid API key",
+                )
+            else:
+                return ComponentHealth(
+                    name="anthropic",
+                    status=HealthStatus.DEGRADED,
+                    latency_ms=round(latency, 2),
+                    message=f"API returned status {response.status_code}",
+                )
                     
-        except asyncio.TimeoutError:
+        except httpx.TimeoutException:
             return ComponentHealth(
                 name="anthropic",
                 status=HealthStatus.UNHEALTHY,
@@ -253,45 +262,45 @@ class HealthChecker:
             )
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": settings.GPT_MODEL,
-                        "max_tokens": 1,
-                        "messages": [{"role": "user", "content": "ping"}]
-                    }
+            http_pool = await self._get_http_pool()
+            response = await http_pool.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": settings.GPT_MODEL,
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "ping"}]
+                }
+            )
+            
+            latency = (time.time() - start) * 1000
+            
+            if response.status_code in (200, 201):
+                return ComponentHealth(
+                    name="openai",
+                    status=HealthStatus.HEALTHY,
+                    latency_ms=round(latency, 2),
+                    message=f"API responding with {settings.GPT_MODEL}",
                 )
-                
-                latency = (time.time() - start) * 1000
-                
-                if response.status_code in (200, 201):
-                    return ComponentHealth(
-                        name="openai",
-                        status=HealthStatus.HEALTHY,
-                        latency_ms=round(latency, 2),
-                        message=f"API responding with {settings.GPT_MODEL}",
-                    )
-                elif response.status_code == 401:
-                    return ComponentHealth(
-                        name="openai",
-                        status=HealthStatus.UNHEALTHY,
-                        latency_ms=round(latency, 2),
-                        message="Invalid API key",
-                    )
-                else:
-                    return ComponentHealth(
-                        name="openai",
-                        status=HealthStatus.DEGRADED,
-                        latency_ms=round(latency, 2),
-                        message=f"API returned status {response.status_code}",
-                    )
+            elif response.status_code == 401:
+                return ComponentHealth(
+                    name="openai",
+                    status=HealthStatus.UNHEALTHY,
+                    latency_ms=round(latency, 2),
+                    message="Invalid API key",
+                )
+            else:
+                return ComponentHealth(
+                    name="openai",
+                    status=HealthStatus.DEGRADED,
+                    latency_ms=round(latency, 2),
+                    message=f"API returned status {response.status_code}",
+                )
                     
-        except asyncio.TimeoutError:
+        except httpx.TimeoutException:
             return ComponentHealth(
                 name="openai",
                 status=HealthStatus.UNHEALTHY,
@@ -318,45 +327,45 @@ class HealthChecker:
             )
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {settings.GROQ_API_KEY}",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": settings.GROQ_MODEL,
-                        "max_tokens": 1,
-                        "messages": [{"role": "user", "content": "ping"}]
-                    }
+            http_pool = await self._get_http_pool()
+            response = await http_pool.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": settings.GROQ_MODEL,
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "ping"}]
+                }
+            )
+            
+            latency = (time.time() - start) * 1000
+            
+            if response.status_code in (200, 201):
+                return ComponentHealth(
+                    name="groq",
+                    status=HealthStatus.HEALTHY,
+                    latency_ms=round(latency, 2),
+                    message=f"API responding with {settings.GROQ_MODEL}",
                 )
-                
-                latency = (time.time() - start) * 1000
-                
-                if response.status_code in (200, 201):
-                    return ComponentHealth(
-                        name="groq",
-                        status=HealthStatus.HEALTHY,
-                        latency_ms=round(latency, 2),
-                        message=f"API responding with {settings.GROQ_MODEL}",
-                    )
-                elif response.status_code == 401:
-                    return ComponentHealth(
-                        name="groq",
-                        status=HealthStatus.UNHEALTHY,
-                        latency_ms=round(latency, 2),
-                        message="Invalid API key",
-                    )
-                else:
-                    return ComponentHealth(
-                        name="groq",
-                        status=HealthStatus.DEGRADED,
-                        latency_ms=round(latency, 2),
-                        message=f"API returned status {response.status_code}",
-                    )
+            elif response.status_code == 401:
+                return ComponentHealth(
+                    name="groq",
+                    status=HealthStatus.UNHEALTHY,
+                    latency_ms=round(latency, 2),
+                    message="Invalid API key",
+                )
+            else:
+                return ComponentHealth(
+                    name="groq",
+                    status=HealthStatus.DEGRADED,
+                    latency_ms=round(latency, 2),
+                    message=f"API returned status {response.status_code}",
+                )
                     
-        except asyncio.TimeoutError:
+        except httpx.TimeoutException:
             return ComponentHealth(
                 name="groq",
                 status=HealthStatus.UNHEALTHY,
@@ -383,39 +392,39 @@ class HealthChecker:
             )
         
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent",
-                    params={"key": settings.GEMINI_API_KEY},
-                    headers={"content-type": "application/json"},
-                    json={"contents": [{"parts": [{"text": "ping"}]}]}
+            http_pool = await self._get_http_pool()
+            response = await http_pool.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent",
+                params={"key": settings.GEMINI_API_KEY},
+                headers={"content-type": "application/json"},
+                json={"contents": [{"parts": [{"text": "ping"}]}]}
+            )
+            
+            latency = (time.time() - start) * 1000
+            
+            if response.status_code in (200, 201):
+                return ComponentHealth(
+                    name="gemini",
+                    status=HealthStatus.HEALTHY,
+                    latency_ms=round(latency, 2),
+                    message=f"API responding with {settings.GEMINI_MODEL}",
                 )
-                
-                latency = (time.time() - start) * 1000
-                
-                if response.status_code in (200, 201):
-                    return ComponentHealth(
-                        name="gemini",
-                        status=HealthStatus.HEALTHY,
-                        latency_ms=round(latency, 2),
-                        message=f"API responding with {settings.GEMINI_MODEL}",
-                    )
-                elif response.status_code == 401:
-                    return ComponentHealth(
-                        name="gemini",
-                        status=HealthStatus.UNHEALTHY,
-                        latency_ms=round(latency, 2),
-                        message="Invalid API key",
-                    )
-                else:
-                    return ComponentHealth(
-                        name="gemini",
-                        status=HealthStatus.DEGRADED,
-                        latency_ms=round(latency, 2),
-                        message=f"API returned status {response.status_code}",
-                    )
+            elif response.status_code == 401:
+                return ComponentHealth(
+                    name="gemini",
+                    status=HealthStatus.UNHEALTHY,
+                    latency_ms=round(latency, 2),
+                    message="Invalid API key",
+                )
+            else:
+                return ComponentHealth(
+                    name="gemini",
+                    status=HealthStatus.DEGRADED,
+                    latency_ms=round(latency, 2),
+                    message=f"API returned status {response.status_code}",
+                )
                     
-        except asyncio.TimeoutError:
+        except httpx.TimeoutException:
             return ComponentHealth(
                 name="gemini",
                 status=HealthStatus.UNHEALTHY,
