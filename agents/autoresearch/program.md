@@ -55,6 +55,7 @@ num_params_M:     50.3
 depth:            8
 ```
 
+
 Note that the script is configured to always stop after 5 minutes, so depending on the computing platform of this computer the numbers might look different. You can extract the key metric from the log file:
 
 ```
