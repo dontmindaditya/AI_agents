@@ -4,6 +4,7 @@ Pipeline Configuration
 Settings and stage definitions for the code generation pipeline.
 """
 
+
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
