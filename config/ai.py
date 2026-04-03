@@ -4,6 +4,7 @@ AI Configuration
 Settings for AI model providers and their configurations.
 """
 
+
 from typing import Optional
 from pydantic_settings import BaseSettings
 from pathlib import Path
