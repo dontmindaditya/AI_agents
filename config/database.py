@@ -4,6 +4,7 @@ Database Configuration
 Settings for database connections and caching.
 """
 
+
 from typing import Optional
 from pydantic_settings import BaseSettings
 from pathlib import Path
